@@ -9,7 +9,7 @@
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <link rel="manifest" href="manifest.webmanifest">
-<meta name="theme-color" content="#09130c">
+<meta name="theme-color" content="#0e100e">
 <title>Stock's Lifting Log</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -21,21 +21,21 @@
    ========================================================================== */
 :root{
   color-scheme: dark;
-  /* Stockwell: deep forest surfaces, cream ink, sage accent. */
-  --paper:    oklch(0.175 0.022 152);   /* page, forest-900 */
-  --paper-2:  oklch(0.212 0.027 152);   /* section strip / inset */
-  --card:     oklch(0.248 0.034 152);   /* elevated card */
+  /* Charcoal surfaces (faint green tint), cream ink, one sage green for accent + done sets. */
+  --paper:    oklch(0.165 0.005 150);   /* page, charcoal */
+  --paper-2:  oklch(0.200 0.006 150);   /* section strip / inset */
+  --card:     oklch(0.228 0.007 150);   /* elevated card */
   --ink:      oklch(0.953 0.016 86);    /* Stockwell cream */
-  --ink-2:    oklch(0.830 0.020 110);
-  --muted:    oklch(0.680 0.030 145);
-  --faint:    oklch(0.540 0.032 150);
-  --line:     oklch(0.300 0.036 152);
-  --line-2:   oklch(0.375 0.045 151);
+  --ink-2:    oklch(0.820 0.008 100);
+  --muted:    oklch(0.650 0.010 140);
+  --faint:    oklch(0.510 0.010 145);
+  --line:     oklch(0.290 0.008 150);
+  --line-2:   oklch(0.365 0.010 150);
   --accent:   oklch(0.810 0.095 134);   /* sage light */
   --accent-2: oklch(0.660 0.091 132);
-  --accent-wash: oklch(0.320 0.050 140);
-  --good:     oklch(0.820 0.150 158);   /* completed set, mint so it reads apart from sage */
-  --good-wash:oklch(0.320 0.062 158);
+  --accent-wash: oklch(0.290 0.040 140);
+  --good:     oklch(0.810 0.095 134);   /* completed set, same sage as accent */
+  --good-wash:oklch(0.300 0.045 140);
   --prgold:   oklch(0.855 0.160 95);    /* PR badge */
   --blue:     oklch(0.700 0.120 275);
   --on-accent:oklch(0.227 0.027 153);   /* forest ink on sage */
@@ -1166,7 +1166,7 @@ const DISPLAY_NAME     = "Stock";
 const ATHLETE_KEY      = "Stock";       // backend identity (Stock himself)
 const DAD_NAME         = DISPLAY_NAME;  // legacy alias, display only
 /* ========================================================================== */
-const APP_VERSION = "2026.09.28";
+const APP_VERSION = "2026.09.28b";
 /* Owner profile — unset. Never populate this in a public repo with real
    personal details; it ships in the page source. */
 const PROFILE = null;
