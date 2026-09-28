@@ -11,7 +11,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#0f0f0f">
 <title>Stock's Lifting Log</title>
-<link rel="preload" as="image" href="intro-boring.jpg">
+<link rel="preload" as="image" href="intro-tally.jpg">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
@@ -526,9 +526,9 @@ input,textarea{font-family:inherit;}
   0%{transform:translateY(-12px) rotate(0deg);opacity:1;}
   100%{transform:translateY(104vh) rotate(var(--rot,540deg));opacity:1;}
 }
-/* intro splash: the "boring." card on every open. The fade-out is pure CSS,
+/* intro splash: the chalk tally card on every open. The fade-out is pure CSS,
    so the overlay clears itself even if the script never runs. */
-.intro-ov{position:fixed;inset:0;z-index:90;background:#fbf4e4;display:flex;align-items:center;justify-content:center;
+.intro-ov{position:fixed;inset:0;z-index:90;background:#0c0c0a;display:flex;align-items:center;justify-content:center;
   animation:introOut .45s var(--ease) 1.9s forwards;}
 .intro-ov.skip{animation:introOut .25s var(--ease) forwards;}
 .intro-ov img{width:min(96vw,62vh);height:auto;display:block;opacity:0;transform:scale(.96);
@@ -923,7 +923,7 @@ body.drag-lock,body.drag-lock *{-webkit-user-select:none !important;user-select:
 </style>
 </head>
 <body>
-<div class="intro-ov" id="introOv" aria-hidden="true" onclick="this.classList.add('skip')"><img src="intro-boring.jpg" alt=""></div>
+<div class="intro-ov" id="introOv" aria-hidden="true" onclick="this.classList.add('skip')"><img src="intro-tally.jpg" alt=""></div>
 
 <div class="appbar">
   <div class="row">
@@ -1197,7 +1197,7 @@ const DISPLAY_NAME     = "Stock";
 const ATHLETE_KEY      = "Stock";       // backend identity (Stock himself)
 const DAD_NAME         = DISPLAY_NAME;  // legacy alias, display only
 /* ========================================================================== */
-const APP_VERSION = "2026.09.28f";
+const APP_VERSION = "2026.09.28g";
 /* Owner profile — unset. Never populate this in a public repo with real
    personal details; it ships in the page source. */
 const PROFILE = null;
