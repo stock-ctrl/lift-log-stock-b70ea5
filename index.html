@@ -11,7 +11,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#0f0f0f">
 <title>Stock's Lifting Log</title>
-<link rel="preload" as="image" href="intro-tally.jpg">
+<link rel="preload" as="image" href="it-bg.webp"><link rel="preload" as="image" href="it-s0.webp"><link rel="preload" as="image" href="it-s1.webp"><link rel="preload" as="image" href="it-s2.webp"><link rel="preload" as="image" href="it-s3.webp"><link rel="preload" as="image" href="it-slash.webp">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
@@ -526,17 +526,30 @@ input,textarea{font-family:inherit;}
   0%{transform:translateY(-12px) rotate(0deg);opacity:1;}
   100%{transform:translateY(104vh) rotate(var(--rot,540deg));opacity:1;}
 }
-/* intro splash: the chalk tally card on every open. The fade-out is pure CSS,
-   so the overlay clears itself even if the script never runs. */
+/* intro splash: the chalk tally gets tallied. Four strokes draw top to bottom,
+   then the green slash swipes across and the card jolts. Layers are cut from
+   the one ChatGPT image (it-*.webp). The overlay fade is pure CSS, so it
+   clears itself even if the script never runs. */
 .intro-ov{position:fixed;inset:0;z-index:90;background:#0c0c0a;display:flex;align-items:center;justify-content:center;
-  animation:introOut .45s var(--ease) 1.9s forwards;}
+  animation:introOut .45s var(--ease) 2.35s forwards;}
 .intro-ov.skip{animation:introOut .25s var(--ease) forwards;}
-.intro-ov img{width:min(96vw,62vh);height:auto;display:block;opacity:0;transform:scale(.96);
-  animation:introIn .5s var(--ease) .05s forwards;
-  -webkit-mask-image:radial-gradient(closest-side,#000 78%,transparent 100%);mask-image:radial-gradient(closest-side,#000 78%,transparent 100%);}
-@keyframes introIn{to{opacity:1;transform:none;}}
+.it-stage{position:relative;width:min(96vw,62vh);aspect-ratio:1;
+  -webkit-mask-image:radial-gradient(closest-side,#000 78%,transparent 100%);mask-image:radial-gradient(closest-side,#000 78%,transparent 100%);
+  animation:itJolt .28s ease-out 1.66s;}
+.it-stage img{position:absolute;display:block;}
+.it-bg{inset:0;width:100%;height:100%;}
+.it-s{clip-path:inset(0 0 100% 0);animation:itDown .24s cubic-bezier(.3,.6,.4,1) forwards;}
+.it-sl{clip-path:inset(0 100% 0 0);animation:itAcross .34s cubic-bezier(.5,0,.3,1) 1.32s forwards;}
+.it-s0{left:20.833%;top:17.5%;width:13.611%;height:72.639%;animation-delay:0.15s;}
+.it-s1{left:36.389%;top:18.056%;width:13.472%;height:68.888%;animation-delay:0.42s;}
+.it-s2{left:51.806%;top:18.056%;width:12.638%;height:67.5%;animation-delay:0.69s;}
+.it-s3{left:65.972%;top:17.083%;width:13.195%;height:69.445%;animation-delay:0.96s;}
+.it-slash{left:4.722%;top:25.417%;width:90.695%;height:55.555%;}
+@keyframes itDown{to{clip-path:inset(0 0 0 0);}}
+@keyframes itAcross{to{clip-path:inset(0 0 0 0);}}
+@keyframes itJolt{0%{transform:none}30%{transform:translate(2px,-3px) scale(1.012)}60%{transform:translate(-1px,1px)}100%{transform:none}}
 @keyframes introOut{to{opacity:0;visibility:hidden;pointer-events:none;}}
-@media (prefers-reduced-motion:reduce){.intro-ov{animation-delay:1.2s}.intro-ov img{animation-duration:.01s}}
+@media (prefers-reduced-motion:reduce){.intro-ov{animation-delay:1.2s}.it-s,.it-sl{animation-duration:.01s;animation-delay:0s}.it-stage{animation:none}}
 /* quote pop-up (Hormozi / Williamson) */
 .qpop{
   position:fixed;left:16px;right:16px;top:calc(env(safe-area-inset-top) + 12px);z-index:60;
@@ -923,7 +936,7 @@ body.drag-lock,body.drag-lock *{-webkit-user-select:none !important;user-select:
 </style>
 </head>
 <body>
-<div class="intro-ov" id="introOv" aria-hidden="true" onclick="this.classList.add('skip')"><img src="intro-tally.jpg" alt=""></div>
+<div class="intro-ov" id="introOv" aria-hidden="true" onclick="this.classList.add('skip')"><div class="it-stage"><img class="it-bg" src="it-bg.webp" alt=""><img class="it-s it-s0" src="it-s0.webp" alt=""><img class="it-s it-s1" src="it-s1.webp" alt=""><img class="it-s it-s2" src="it-s2.webp" alt=""><img class="it-s it-s3" src="it-s3.webp" alt=""><img class="it-sl it-slash" src="it-slash.webp" alt=""></div></div>
 
 <div class="appbar">
   <div class="row">
@@ -1197,7 +1210,7 @@ const DISPLAY_NAME     = "Stock";
 const ATHLETE_KEY      = "Stock";       // backend identity (Stock himself)
 const DAD_NAME         = DISPLAY_NAME;  // legacy alias, display only
 /* ========================================================================== */
-const APP_VERSION = "2026.09.28g";
+const APP_VERSION = "2026.09.28h";
 /* Owner profile — unset. Never populate this in a public repo with real
    personal details; it ships in the page source. */
 const PROFILE = null;
@@ -3343,7 +3356,7 @@ renderToday(); renderHistory(); renderRecords(); updateStats(); renderHome(); re
    the app on a second device, see an empty history and no explanation. */
 syncPull().then(syncPush);
 planPull().then(maybeAutoLoadToday);
-setTimeout(()=>showQuote(), 2700);   // after the intro clears
+setTimeout(()=>showQuote(), 3100);   // after the intro clears
 setTimeout(checkForUpdate, 1500);
 </script>
 </body>
