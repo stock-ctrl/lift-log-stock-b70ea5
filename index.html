@@ -531,7 +531,8 @@ input,textarea{font-family:inherit;}
    the one ChatGPT image (it-*.webp). The overlay fade is pure CSS, so it
    clears itself even if the script never runs. */
 .intro-ov{position:fixed;inset:0;z-index:90;background:#0c0c0a;display:flex;align-items:center;justify-content:center;
-  animation:introOut .45s var(--ease) 2.35s forwards;}
+  animation:introOut .45s var(--ease) 6s forwards;}          /* safety net if nothing ever loads */
+.intro-ov.go{animation:introOut2 .45s var(--ease) 2.35s forwards;}   /* new name = restarts the clock at .go */
 .intro-ov.skip{animation:introOut .25s var(--ease) forwards;}
 .it-stage{position:relative;width:min(96vw,62vh);aspect-ratio:1;
   -webkit-mask-image:radial-gradient(closest-side,#000 78%,transparent 100%);mask-image:radial-gradient(closest-side,#000 78%,transparent 100%);
@@ -549,7 +550,10 @@ input,textarea{font-family:inherit;}
 @keyframes itAcross{to{clip-path:inset(0 0 0 0);}}
 @keyframes itJolt{0%{transform:none}30%{transform:translate(2px,-3px) scale(1.012)}60%{transform:translate(-1px,1px)}100%{transform:none}}
 @keyframes introOut{to{opacity:0;visibility:hidden;pointer-events:none;}}
-@media (prefers-reduced-motion:reduce){.intro-ov{animation-delay:1.2s}.it-s,.it-sl{animation-duration:.01s;animation-delay:0s}.it-stage{animation:none}}
+@keyframes introOut2{to{opacity:0;visibility:hidden;pointer-events:none;}}
+.intro-ov:not(.go) .it-s,.intro-ov:not(.go) .it-sl,.intro-ov:not(.go) .it-stage{animation-play-state:paused;}
+.intro-ov:not(.go) .it-stage{opacity:0;}
+@media (prefers-reduced-motion:reduce){.it-stage{animation:none}}
 /* quote pop-up (Hormozi / Williamson) */
 .qpop{
   position:fixed;left:16px;right:16px;top:calc(env(safe-area-inset-top) + 12px);z-index:60;
@@ -937,6 +941,19 @@ body.drag-lock,body.drag-lock *{-webkit-user-select:none !important;user-select:
 </head>
 <body>
 <div class="intro-ov" id="introOv" aria-hidden="true" onclick="this.classList.add('skip')"><div class="it-stage"><img class="it-bg" src="it-bg.webp" alt=""><img class="it-s it-s0" src="it-s0.webp" alt=""><img class="it-s it-s1" src="it-s1.webp" alt=""><img class="it-s it-s2" src="it-s2.webp" alt=""><img class="it-s it-s3" src="it-s3.webp" alt=""><img class="it-sl it-slash" src="it-slash.webp" alt=""></div></div>
+<script>
+(function(){
+  const ov=document.getElementById("introOv"), imgs=[...ov.querySelectorAll("img")];
+  let done=false;
+  window.introDone=new Promise(res=>{
+    ov.addEventListener("animationend",e=>{ if(e.target===ov) res(); });
+    setTimeout(res, 7000);
+  });
+  const go=()=>{ if(done) return; done=true; ov.classList.add("go"); };
+  Promise.all(imgs.map(i=>i.decode?i.decode().catch(()=>{}):Promise.resolve())).then(go);
+  setTimeout(()=>{ if(!done){ done=true; ov.classList.add("skip"); } }, 2500);
+})();
+</script>
 
 <div class="appbar">
   <div class="row">
@@ -1210,7 +1227,7 @@ const DISPLAY_NAME     = "Stock";
 const ATHLETE_KEY      = "Stock";       // backend identity (Stock himself)
 const DAD_NAME         = DISPLAY_NAME;  // legacy alias, display only
 /* ========================================================================== */
-const APP_VERSION = "2026.09.28h";
+const APP_VERSION = "2026.09.28j";
 /* Owner profile — unset. Never populate this in a public repo with real
    personal details; it ships in the page source. */
 const PROFILE = null;
@@ -3356,7 +3373,7 @@ renderToday(); renderHistory(); renderRecords(); updateStats(); renderHome(); re
    the app on a second device, see an empty history and no explanation. */
 syncPull().then(syncPush);
 planPull().then(maybeAutoLoadToday);
-setTimeout(()=>showQuote(), 3100);   // after the intro clears
+(window.introDone||Promise.resolve()).then(()=>setTimeout(showQuote, 350));   // first quote once the intro is gone   // after the intro clears
 setTimeout(checkForUpdate, 1500);
 </script>
 </body>
