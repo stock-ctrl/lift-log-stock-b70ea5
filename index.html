@@ -11,8 +11,9 @@
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#0f0f0f">
 <title>Stock's Lifting Log</title>
+<link rel="preload" as="image" href="intro-boring.jpg">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
 /* ============================================================================
    EASY-EDIT ZONE
@@ -525,6 +526,17 @@ input,textarea{font-family:inherit;}
   0%{transform:translateY(-12px) rotate(0deg);opacity:1;}
   100%{transform:translateY(104vh) rotate(var(--rot,540deg));opacity:1;}
 }
+/* intro splash: the "boring." card on every open. The fade-out is pure CSS,
+   so the overlay clears itself even if the script never runs. */
+.intro-ov{position:fixed;inset:0;z-index:90;background:#fbf4e4;display:flex;align-items:center;justify-content:center;
+  animation:introOut .45s var(--ease) 1.9s forwards;}
+.intro-ov.skip{animation:introOut .25s var(--ease) forwards;}
+.intro-ov img{width:min(96vw,62vh);height:auto;display:block;opacity:0;transform:scale(.96);
+  animation:introIn .5s var(--ease) .05s forwards;
+  -webkit-mask-image:radial-gradient(closest-side,#000 78%,transparent 100%);mask-image:radial-gradient(closest-side,#000 78%,transparent 100%);}
+@keyframes introIn{to{opacity:1;transform:none;}}
+@keyframes introOut{to{opacity:0;visibility:hidden;pointer-events:none;}}
+@media (prefers-reduced-motion:reduce){.intro-ov{animation-delay:1.2s}.intro-ov img{animation-duration:.01s}}
 /* quote pop-up (Hormozi / Williamson) */
 .qpop{
   position:fixed;left:16px;right:16px;top:calc(env(safe-area-inset-top) + 12px);z-index:60;
@@ -911,6 +923,7 @@ body.drag-lock,body.drag-lock *{-webkit-user-select:none !important;user-select:
 </style>
 </head>
 <body>
+<div class="intro-ov" id="introOv" aria-hidden="true" onclick="this.classList.add('skip')"><img src="intro-boring.jpg" alt=""></div>
 
 <div class="appbar">
   <div class="row">
@@ -1184,7 +1197,7 @@ const DISPLAY_NAME     = "Stock";
 const ATHLETE_KEY      = "Stock";       // backend identity (Stock himself)
 const DAD_NAME         = DISPLAY_NAME;  // legacy alias, display only
 /* ========================================================================== */
-const APP_VERSION = "2026.09.28d";
+const APP_VERSION = "2026.09.28f";
 /* Owner profile — unset. Never populate this in a public repo with real
    personal details; it ships in the page source. */
 const PROFILE = null;
@@ -3330,7 +3343,7 @@ renderToday(); renderHistory(); renderRecords(); updateStats(); renderHome(); re
    the app on a second device, see an empty history and no explanation. */
 syncPull().then(syncPush);
 planPull().then(maybeAutoLoadToday);
-setTimeout(()=>showQuote(), 900);
+setTimeout(()=>showQuote(), 2700);   // after the intro clears
 setTimeout(checkForUpdate, 1500);
 </script>
 </body>
