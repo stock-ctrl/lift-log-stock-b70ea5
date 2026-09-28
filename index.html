@@ -525,6 +525,17 @@ input,textarea{font-family:inherit;}
   0%{transform:translateY(-12px) rotate(0deg);opacity:1;}
   100%{transform:translateY(104vh) rotate(var(--rot,540deg));opacity:1;}
 }
+/* quote pop-up (Hormozi / Williamson) */
+.qpop{
+  position:fixed;left:16px;right:16px;top:calc(env(safe-area-inset-top) + 12px);z-index:60;
+  background:var(--card);border:1px solid var(--line-2);border-left:3px solid var(--good);
+  border-radius:14px;padding:15px 16px 13px;box-shadow:0 14px 38px oklch(0 0 0 / .5);
+  opacity:0;transform:translateY(-14px);pointer-events:none;
+  transition:opacity .3s var(--ease),transform .38s var(--ease);max-width:520px;margin:0 auto;
+}
+.qpop.show{opacity:1;transform:none;pointer-events:auto;}
+.qpop .qp-q{font-size:15.5px;line-height:1.45;font-weight:600;color:var(--ink);}
+.qpop .qp-a{margin-top:8px;font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);}
 .prbanner{
   position:fixed;left:50%;top:calc(env(safe-area-inset-top) + 14px);transform:translateX(-50%) translateY(-26px);
   z-index:61;background:var(--accent);color:var(--on-accent);border-radius:16px;
@@ -1151,6 +1162,7 @@ body.drag-lock,body.drag-lock *{-webkit-user-select:none !important;user-select:
 </div>
 
 <div id="confetti"></div>
+<div class="qpop" id="qpop" role="status"><div class="qp-q" id="qpQ"></div><div class="qp-a" id="qpA"></div></div>
 <div class="prbanner" id="prbanner"><div class="pb-t">New PR. Now beat it.</div><div class="pb-s" id="prbannerText"></div></div>
 <button class="update-fab" id="updateFab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.5 9a9 9 0 0114.85-3.36L23 10M1 14l4.65 4.36A9 9 0 0020.5 15"/></svg> Update</button>
 <div class="whatsnew" id="whatsNew">
@@ -1172,7 +1184,7 @@ const DISPLAY_NAME     = "Stock";
 const ATHLETE_KEY      = "Stock";       // backend identity (Stock himself)
 const DAD_NAME         = DISPLAY_NAME;  // legacy alias, display only
 /* ========================================================================== */
-const APP_VERSION = "2026.09.28c";
+const APP_VERSION = "2026.09.28d";
 /* Owner profile — unset. Never populate this in a public repo with real
    personal details; it ships in the page source. */
 const PROFILE = null;
@@ -1530,6 +1542,7 @@ function startRest(){
   restEnd=Date.now()+restTarget*1000;
   el.classList.add("show"); tickRest();
   if(restInt) clearInterval(restInt); restInt=setInterval(tickRest,250);
+  if(Math.random()<0.5) showQuote();
 }
 function tickRest(){
   const el=document.getElementById("rest");
@@ -1617,7 +1630,7 @@ function finishWorkout(){
   if(dayName){ const rts=loadRoutines(); rts[dayName.toLowerCase()]={name:dayName,exercises:exercises.map(e=>e.name)}; saveRoutines(rts); }
   draft=blankDraft(); saveDraft(); sessionPRs={}; stopWorkoutClock(); closeRest();
   renderToday(); renderHistory(); renderRecords(); updateStats(); renderHome(); renderStats(); renderPlan(); syncPush();
-  toast("Logged. Beat it next time."); switchTab("history");
+  toast("Logged. Beat it next time."); switchTab("history"); setTimeout(showQuote, 2200);
 }
 
 /* ======================= HISTORY ======================= */
@@ -3254,6 +3267,62 @@ function renderMuscleSets(groupCounts, muscleCounts){
   host.innerHTML=h;
 }
 
+/* ===================== QUOTES =====================
+   Real, sourced lines only (sources in QUOTES.md). Shown on open, after a
+   finished workout, and on about half of rest timers. A shuffle bag in
+   localStorage means no repeats until every quote has been seen. */
+const QUOTES = [
+  {"q": "Success is hard because it requires consistency not complexity.", "a": "Alex Hormozi"},
+  {"q": "You can hate showing up early, being consistent, doing what you said you'd do... You can hate all of it. You just have to hate losing, more.", "a": "Alex Hormozi"},
+  {"q": "If you can do it when it's hard, you can keep doing it under any conditions... So you might as well start when it's hard.", "a": "Alex Hormozi"},
+  {"q": "You must first become consistent before you can become exceptional.", "a": "Alex Hormozi"},
+  {"q": "You just have to want it bad enough that you're willing to start when it's inconvenient... you just have to keep going.", "a": "Alex Hormozi"},
+  {"q": "Do the work tired. Do the work nervous. Do the work imperfectly. Do the work even when you don't feel like it.", "a": "Alex Hormozi"},
+  {"q": "If it's hard, good. It means no one else will do it. More for you.", "a": "Alex Hormozi"},
+  {"q": "To appear strong in a world of weak men, you just need to show up and do what you said you were gonna do.", "a": "Alex Hormozi"},
+  {"q": "What makes things hard isn't complexity, it's consistency. As boring as it is, you just have to keep doing it before you get anything back.", "a": "Alex Hormozi"},
+  {"q": "Boring work leads to extraordinary outcomes.", "a": "Alex Hormozi"},
+  {"q": "\"Boring\" is what most people call the work it takes to become the best.", "a": "Alex Hormozi"},
+  {"q": "The work never stops being hard, boring, and unsexy. You can dress it up or dress it down, but at the end of the day, the work still needs doing.", "a": "Alex Hormozi"},
+  {"q": "Don't get bored. Be violent. Create your own enemies. Break your own records. Leave no doubt. At the end of your life, you're never gonna want to be the man who gave up early.", "a": "Alex Hormozi"},
+  {"q": "You cannot make yourself exceptional and live a normal life. To make yourself exceptional, you must live an exceptional life. You must become the exception.", "a": "Alex Hormozi"},
+  {"q": "To become self-made, you need more self-discipline than self-confidence. You need to be able to do it anyways.", "a": "Alex Hormozi"},
+  {"q": "The secret to getting what you want: Doing lots of things you don't want first.", "a": "Alex Hormozi"},
+  {"q": "The people who succeed most in life can do one thing for extraordinary amounts of time without needing immediate reward. You don't lack self-esteem, you lack self-control.", "a": "Alex Hormozi"},
+  {"q": "You're going to have to learn how to try significantly harder and longer than you expected... who you become to get it was the point all along.", "a": "Alex Hormozi"},
+  {"q": "You don't need a mentor. You're allowed to: Give yourself permission. Hold yourself accountable. Make yourself proud.", "a": "Alex Hormozi"},
+  {"q": "Consistency is even rarer than talent and enthusiasm.", "a": "Chris Williamson"},
+  {"q": "The ability to say you're going to do something and to believe that you'll actually do it is a superpower.", "a": "Chris Williamson"},
+  {"q": "The difference between completing an activity 100% fully as you'd planned to and 99% completing it makes a hell of a difference.", "a": "Chris Williamson"},
+  {"q": "Saying you're going to do something and knowing that you'll go through with it is the foundation of confidence.", "a": "Chris Williamson"},
+  {"q": "Discipline is friction accepted.", "a": "Chris Williamson"},
+  {"q": "By the time the obsession wanes, you've built the patterns, routines, skills and habits that allow you to keep going when the fuel is no longer free.", "a": "Chris Williamson"},
+  {"q": "Each time you break a new limit, you now know you have the capacity to handle more than you ever did before.", "a": "Chris Williamson"},
+  {"q": "You will be amazed at what you can complete when you have no other option.", "a": "Chris Williamson"},
+  {"q": "Procrastination is often not about indecision. It's a decision to live in theory rather than in practice.", "a": "Chris Williamson"},
+  {"q": "If you measure inputs, you'll get good at trying. If you measure outputs, you'll get good at producing. But if you measure outcomes, you'll get good at winning.", "a": "Chris Williamson"},
+  {"q": "The bar has never been set lower. A bit of consistency, a bit of intentionality, a bit of resilience and a gram of talent will make you into an absolute killer.", "a": "Chris Williamson"}
+];
+const QUOTEBAG_KEY = "stock_quotebag_v1" + (DEMO ? "_demo" : "");
+let qpTimer=null;
+function nextQuote(){
+  if(!QUOTES.length) return null;
+  let bag=[]; try{ bag=JSON.parse(localStorage.getItem(QUOTEBAG_KEY)||"[]"); }catch(e){}
+  bag=bag.filter(i=>i<QUOTES.length);
+  if(!bag.length){ bag=QUOTES.map((_,i)=>i); for(let i=bag.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [bag[i],bag[j]]=[bag[j],bag[i]]; } }
+  const i=bag.pop(); try{ localStorage.setItem(QUOTEBAG_KEY,JSON.stringify(bag)); }catch(e){}
+  return QUOTES[i];
+}
+function showQuote(){
+  const q=nextQuote(); if(!q) return;
+  const el=document.getElementById("qpop");
+  document.getElementById("qpQ").textContent="\u201C"+q.q+"\u201D";
+  document.getElementById("qpA").textContent=q.a;
+  el.classList.add("show");
+  clearTimeout(qpTimer); qpTimer=setTimeout(()=>el.classList.remove("show"), 9000);
+}
+document.getElementById("qpop").onclick=()=>{ clearTimeout(qpTimer); document.getElementById("qpop").classList.remove("show"); };
+
 renderToday(); renderHistory(); renderRecords(); updateStats(); renderHome(); renderStats();
 /* Pull first, then push. The push matters even with nothing to send: if this
    device is not the one registered to her, the server answers "unclaimed" and
@@ -3261,6 +3330,7 @@ renderToday(); renderHistory(); renderRecords(); updateStats(); renderHome(); re
    the app on a second device, see an empty history and no explanation. */
 syncPull().then(syncPush);
 planPull().then(maybeAutoLoadToday);
+setTimeout(()=>showQuote(), 900);
 setTimeout(checkForUpdate, 1500);
 </script>
 </body>
