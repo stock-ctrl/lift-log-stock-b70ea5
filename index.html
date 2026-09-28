@@ -237,21 +237,31 @@ input,textarea{font-family:inherit;}
 .set-row.done .check{animation:pop .28s var(--ease);}
 @keyframes pop{0%{transform:scale(.7)}55%{transform:scale(1.12)}100%{transform:scale(1)}}
 
-.set-foot{display:flex;gap:8px;margin:8px 0 12px;}
+.set-foot{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px;}
+.set-foot .add-set{flex:1 0 auto;}
+.set-foot .ss-tog{flex:1 0 auto;justify-content:center;}
 .add-set{
   flex:1;display:flex;align-items:center;justify-content:center;gap:7px;
-  padding:11px;border:1px dashed var(--line-2);border-radius:11px;
+  padding:11px 8px;border:1px dashed var(--line-2);border-radius:11px;white-space:nowrap;
   background:none;color:var(--ink-2);font-size:14px;font-weight:700;cursor:pointer;
   transition:background .15s,border-color .15s,color .15s;
 }
 .add-set:active{background:var(--paper-2);border-color:var(--accent);color:var(--accent);}
 .rem-set{
   display:flex;align-items:center;justify-content:center;gap:6px;
-  padding:11px 16px;border:1px dashed var(--line-2);border-radius:11px;
+  padding:11px 11px;border:1px dashed var(--line-2);border-radius:11px;white-space:nowrap;
   background:none;color:var(--muted);font-size:14px;font-weight:700;cursor:pointer;
   transition:background .15s,border-color .15s,color .15s;
 }
 .rem-set:active{background:var(--paper-2);border-color:var(--accent);color:var(--accent);}
+/* "Superset" toggle in the set footer: on = linked to the lift below */
+.ss-tog{display:flex;align-items:center;gap:6px;padding:11px 10px;border:1px dashed var(--line-2);border-radius:11px;
+  background:none;color:var(--muted);font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;}
+.ss-tog .ss-sw{position:relative;width:28px;height:17px;border-radius:9px;background:var(--line-2);transition:background .2s var(--ease);flex-shrink:0;}
+.ss-tog .ss-sw::after{content:"";position:absolute;top:2px;left:2px;width:13px;height:13px;border-radius:50%;background:var(--ink-2);transition:transform .2s var(--ease);}
+.ss-tog.on{border-style:solid;border-color:var(--good);color:var(--good-ink);}
+.ss-tog.on .ss-sw{background:var(--good);}
+.ss-tog.on .ss-sw::after{transform:translateX(11px);background:var(--on-good);}
 
 /* big add-exercise button */
 .add-ex{
@@ -1240,7 +1250,7 @@ const DISPLAY_NAME     = "Stock";
 const ATHLETE_KEY      = "Stock";       // backend identity (Stock himself)
 const DAD_NAME         = DISPLAY_NAME;  // legacy alias, display only
 /* ========================================================================== */
-const APP_VERSION = "2026.09.28k";
+const APP_VERSION = "2026.09.28m";
 /* Owner profile — unset. Never populate this in a public repo with real
    personal details; it ships in the page source. */
 const PROFILE = null;
@@ -1546,10 +1556,15 @@ function renderToday(){
     foot.appendChild(add);
     if(ex.sets.length>1){
       const rem=document.createElement("button"); rem.className="rem-set";
-      rem.innerHTML='<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M5 12h14"/></svg> Remove set';
+      rem.innerHTML='<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M5 12h14"/></svg> Remove';
       rem.onclick=()=>{ if(ex.sets.length>1){ ex.sets.pop(); markActivity(); saveDraft(); renderToday(); } };
       foot.appendChild(rem);
     }
+    const tog=document.createElement("button"); tog.type="button"; tog.className="ss-tog"+(ssNext?" on":"");
+    tog.setAttribute("aria-pressed",ssNext?"true":"false");
+    tog.innerHTML='<span class="ss-sw"></span>Superset';
+    tog.onclick=()=>{ if(ssNext) ssUnlinkNext(ei); else ssLinkNext(ei); };
+    foot.appendChild(tog);
     grid.appendChild(foot);
     card.appendChild(grid);
     list.appendChild(card);
@@ -2189,7 +2204,31 @@ function renderSync(){
 /* ======================= EXERCISE PICKER SHEET ======================= */
 let ssPick=null;   // {id, step} while picking the two lifts of a superset
 function setSheetTitle(){
-  document.getElementById("shTitle").textContent = !ssPick ? "Add an exercise" : (ssPick.step===1 ? "Superset: first lift" : "Superset: second lift");
+  document.getElementById("shTitle").textContent = !ssPick ? "Add an exercise" : ssPick.with ? ("Superset with "+ssPick.with) : (ssPick.step===1 ? "Superset: first lift" : "Superset: second lift");
+}
+const ssNewId=()=>"ss"+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
+/* drop the link from any lift that no longer has a linked neighbour */
+function ssCleanup(){
+  const ex=draft.exercises;
+  ex.forEach((e,i)=>{ if(e.ss && !(ex[i-1]&&ex[i-1].ss===e.ss) && !(ex[i+1]&&ex[i+1].ss===e.ss)) delete e.ss; });
+}
+/* toggle on: link this lift with the one below it (joining groups, so tri-sets work).
+   Nothing below yet -> open the picker and add the partner underneath, pre-linked. */
+function ssLinkNext(ei){
+  const a=draft.exercises[ei], b=draft.exercises[ei+1];
+  if(!b){
+    a.ss=a.ss||ssNewId(); saveDraft();
+    ssPick={id:a.ss, step:2, with:a.name}; openSheet(); return;
+  }
+  const id=a.ss||b.ss||ssNewId(), old=b.ss;
+  draft.exercises.forEach(e=>{ if(old && e.ss===old) e.ss=id; });
+  a.ss=id; b.ss=id; saveDraft(); renderToday();
+}
+/* toggle off: cut the link between this lift and the one below */
+function ssUnlinkNext(ei){
+  const ex=draft.exercises, old=ex[ei].ss, nid=ssNewId();
+  for(let i=ei+1;i<ex.length && ex[i].ss===old;i++) ex[i].ss=nid;
+  ssCleanup(); saveDraft(); renderToday();
 }
 function openSuperset(){ ssPick={id:"ss"+Date.now().toString(36), step:1}; openSheet(); }
 function openSheet(){
@@ -2200,7 +2239,7 @@ function openSheet(){
   const s=document.getElementById("exSearch"); s.value=""; renderSheet("");
 }
 function closeSheet(){
-  ssPick=null;   // cancelling after the first pick just leaves a normal lift
+  if(ssPick){ ssPick=null; ssCleanup(); saveDraft(); renderToday(); }   // cancelling part-way just leaves normal lifts
   document.getElementById("scrim").classList.remove("show");
   const sh=document.getElementById("sheet"); sh.classList.remove("show"); sh.style.bottom="";
   document.getElementById("exSearch").blur();
