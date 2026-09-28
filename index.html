@@ -9,7 +9,7 @@
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <link rel="manifest" href="manifest.webmanifest">
-<meta name="theme-color" content="#0e100e">
+<meta name="theme-color" content="#0f0f0f">
 <title>Stock's Lifting Log</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -21,24 +21,26 @@
    ========================================================================== */
 :root{
   color-scheme: dark;
-  /* Charcoal surfaces (faint green tint), cream ink, one sage green for accent + done sets. */
-  --paper:    oklch(0.165 0.005 150);   /* page, charcoal */
-  --paper-2:  oklch(0.200 0.006 150);   /* section strip / inset */
-  --card:     oklch(0.228 0.007 150);   /* elevated card */
+  /* Neutral charcoal, cream highlights. Dark green ONLY on primary buttons + done sets. */
+  --paper:    oklch(0.165 0 0);   /* page */
+  --paper-2:  oklch(0.200 0 0);   /* section strip / inset */
+  --card:     oklch(0.228 0 0);   /* elevated card */
   --ink:      oklch(0.953 0.016 86);    /* Stockwell cream */
-  --ink-2:    oklch(0.820 0.008 100);
-  --muted:    oklch(0.650 0.010 140);
-  --faint:    oklch(0.510 0.010 145);
-  --line:     oklch(0.290 0.008 150);
-  --line-2:   oklch(0.365 0.010 150);
-  --accent:   oklch(0.810 0.095 134);   /* sage light */
-  --accent-2: oklch(0.660 0.091 132);
-  --accent-wash: oklch(0.290 0.040 140);
-  --good:     oklch(0.810 0.095 134);   /* completed set, same sage as accent */
-  --good-wash:oklch(0.300 0.045 140);
+  --ink-2:    oklch(0.820 0.006 90);
+  --muted:    oklch(0.650 0.004 90);
+  --faint:    oklch(0.510 0.004 90);
+  --line:     oklch(0.290 0 0);
+  --line-2:   oklch(0.365 0 0);
+  --accent:   oklch(0.953 0.016 86);   /* cream highlight */
+  --accent-2: oklch(0.820 0.012 86);
+  --accent-wash: oklch(0.270 0.004 90);
+  --good:     oklch(0.500 0.085 150);   /* dark green: primary buttons + done sets */
+  --good-wash:oklch(0.280 0.035 150);
+  --good-ink: oklch(0.780 0.080 145);   /* green as text on charcoal */
+  --on-good:  oklch(0.953 0.016 86);    /* cream on dark green */
   --prgold:   oklch(0.855 0.160 95);    /* PR badge */
   --blue:     oklch(0.700 0.120 275);
-  --on-accent:oklch(0.227 0.027 153);   /* forest ink on sage */
+  --on-accent:oklch(0.165 0 0);   /* charcoal ink on cream */
 
   --r-lg:18px; --r-md:13px; --r-sm:9px;
   --bar-h:62px;
@@ -106,6 +108,9 @@ input,textarea{font-family:inherit;}
   margin-top:14px;display:flex;align-items:center;gap:10px;
   font-size:13.5px;color:var(--ink-2);
 }
+.hello .pace{margin-top:6px;font-size:13.5px;line-height:1.45;color:var(--ink-2);}
+.hello .pace b{color:var(--ink);font-weight:750;}
+.hello .pace.bad b{color:var(--prgold);}
 #personalMsg{
   display:none;margin-top:12px;background:var(--card);border:1px solid var(--line);
   border-radius:var(--r-md);padding:13px 15px;
@@ -155,7 +160,7 @@ input,textarea{font-family:inherit;}
 /* collapsed (all sets done) summary view */
 .ex-done{display:flex;align-items:center;gap:12px;padding:14px;cursor:pointer;}
 .ex-done:active{background:var(--paper-2);}
-.exd-check{width:26px;height:26px;border-radius:50%;background:var(--good);color:var(--on-accent);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.exd-check{width:26px;height:26px;border-radius:50%;background:var(--good);color:var(--on-good);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
 .exd-check svg{width:15px;height:15px;}
 .exd-main{flex:1;min-width:0;}
 .exd-name{font-size:17px;font-weight:750;letter-spacing:-.01em;line-height:1.25;}
@@ -170,7 +175,7 @@ input,textarea{font-family:inherit;}
 .resume-t{font-size:15px;font-weight:800;color:var(--ink);}
 .resume-s{font-size:13px;color:var(--ink-2);margin-top:3px;line-height:1.45;}
 .resume-btns{display:flex;gap:8px;margin-top:11px;}
-.resume-save{flex:1;background:var(--accent);color:var(--on-accent);border:none;border-radius:11px;padding:11px;font-size:14px;font-weight:750;cursor:pointer;}
+.resume-save{flex:1;background:var(--good);color:var(--on-good);border:none;border-radius:11px;padding:11px;font-size:14px;font-weight:750;cursor:pointer;}
 .resume-save:active{background:var(--accent-2);}
 .resume-disc{flex-shrink:0;background:none;border:1px solid var(--line-2);color:var(--ink-2);border-radius:11px;padding:11px 16px;font-size:14px;font-weight:750;cursor:pointer;}
 .resume-disc:active{background:var(--card);}
@@ -194,7 +199,7 @@ input,textarea{font-family:inherit;}
   display:flex;align-items:center;justify-content:center;
   font-size:13px;font-weight:800;color:var(--ink-2);background:var(--paper-2);
 }
-.set-row.done .set-idx{background:transparent;color:var(--good);}
+.set-row.done .set-idx{background:transparent;color:var(--good-ink);}
 .set-prev{
   font-size:12.5px;font-weight:600;color:var(--faint);padding-left:4px;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;
@@ -227,7 +232,7 @@ input,textarea{font-family:inherit;}
 .rest-btn:active{transform:scale(.88);background:var(--accent-wash);border-color:var(--accent);color:var(--accent);}
 .act-h{display:flex;justify-content:space-between;gap:8px;}
 .act-h i{font-style:normal;flex:1;text-align:center;}
-.set-row.done .check{background:var(--good);border-color:var(--good);color:var(--on-accent);}
+.set-row.done .check{background:var(--good);border-color:var(--good);color:var(--on-good);}
 .set-row.done .check{animation:pop .28s var(--ease);}
 @keyframes pop{0%{transform:scale(.7)}55%{transform:scale(1.12)}100%{transform:scale(1)}}
 
@@ -250,7 +255,7 @@ input,textarea{font-family:inherit;}
 /* big add-exercise button */
 .add-ex{
   width:100%;display:flex;align-items:center;justify-content:center;gap:9px;
-  background:var(--accent);color:var(--on-accent);border:none;border-radius:var(--r-lg);
+  background:var(--good);color:var(--on-good);border:none;border-radius:var(--r-lg);
   font-size:16px;font-weight:750;padding:16px;cursor:pointer;margin-top:2px;
   transition:transform .15s var(--ease),background .2s;
 }
@@ -292,7 +297,7 @@ input,textarea{font-family:inherit;}
   padding:16px;cursor:pointer;transition:transform .15s var(--ease),background .2s,filter .2s;
 }
 .btn:active{transform:scale(.985);}
-.btn-primary{background:var(--accent);color:var(--on-accent);}
+.btn-primary{background:var(--good);color:var(--on-good);}
 .btn-primary:active{background:var(--accent-2);}
 .btn-ghost{background:none;color:var(--muted);font-size:14px;font-weight:700;padding:12px;}
 .btn-ghost:active{color:var(--ink);}
@@ -523,7 +528,7 @@ input,textarea{font-family:inherit;}
 .prbanner{
   position:fixed;left:50%;top:calc(env(safe-area-inset-top) + 14px);transform:translateX(-50%) translateY(-26px);
   z-index:61;background:var(--accent);color:var(--on-accent);border-radius:16px;
-  padding:12px 22px;text-align:center;box-shadow:0 14px 38px oklch(0.81 0.095 134 / .30);
+  padding:12px 22px;text-align:center;box-shadow:0 14px 38px oklch(0 0 0 / .40);
   opacity:0;pointer-events:none;transition:opacity .3s var(--ease),transform .42s var(--ease);max-width:92vw;
 }
 .prbanner.show{opacity:1;transform:translateX(-50%) translateY(0);}
@@ -543,7 +548,7 @@ input,textarea{font-family:inherit;}
 .whatsnew.show{visibility:visible;opacity:1;transform:translateY(0);pointer-events:auto;}
 .wn-txt{flex:1;font-size:13.5px;line-height:1.35;color:var(--ink);font-weight:600;}
 .wn-txt b{font-weight:800;}
-.wn-go{flex:none;background:var(--accent);color:#fff;border:none;border-radius:999px;padding:8px 15px;font-size:13px;font-weight:750;cursor:pointer;}
+.wn-go{flex:none;background:var(--accent);color:var(--on-accent);border:none;border-radius:999px;padding:8px 15px;font-size:13px;font-weight:750;cursor:pointer;}
 .wn-x{flex:none;background:transparent;border:none;color:var(--muted);font-size:21px;line-height:1;padding:2px 7px;cursor:pointer;}
 .toast{
   position:fixed;left:50%;transform:translateX(-50%) translateY(10px);
@@ -559,9 +564,9 @@ input,textarea{font-family:inherit;}
 .update-fab{
   position:fixed;right:16px;bottom:calc(var(--tab-safe) + 14px);z-index:46;
   display:none;align-items:center;gap:7px;
-  background:var(--good);color:var(--on-accent);border:none;border-radius:24px;
+  background:var(--good);color:var(--on-good);border:none;border-radius:24px;
   padding:11px 16px;font-size:14px;font-weight:800;cursor:pointer;
-  box-shadow:0 8px 24px oklch(0.56 0.105 155 / .45);animation:fabpop .45s var(--ease);
+  box-shadow:0 8px 24px oklch(0 0 0 / .45);animation:fabpop .45s var(--ease);
 }
 .update-fab.show{display:inline-flex;}
 .update-fab svg{width:17px;height:17px;}
@@ -593,7 +598,7 @@ body.drag-lock,body.drag-lock *{-webkit-user-select:none !important;user-select:
 .pd-focus{font-size:15px;font-weight:750;line-height:1.25;}
 .pd-focus.rest{color:var(--muted);font-weight:600;}
 .pd-sub{font-size:12px;color:var(--muted);font-weight:600;margin-top:1px;}
-.pd-check{color:var(--good);flex-shrink:0;display:flex;}
+.pd-check{color:var(--good-ink);flex-shrink:0;display:flex;}
 .pd-check svg{width:20px;height:20px;}
 .pd-chev{color:var(--faint);flex-shrink:0;display:flex;}
 .pd-chev svg{width:18px;height:18px;}
@@ -707,7 +712,7 @@ body.drag-lock,body.drag-lock *{-webkit-user-select:none !important;user-select:
 .stat-card{background:var(--card);border:1px solid var(--line);border-radius:var(--r-md);padding:12px 13px;}
 .stat-card .k{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11.5px;font-weight:650;color:var(--muted);}
 .stat-card .d{font-size:11px;font-weight:750;font-variant-numeric:tabular-nums;white-space:nowrap;}
-.stat-card .d.up{color:var(--good);}
+.stat-card .d.up{color:var(--good-ink);}
 .stat-card .d.dn{color:var(--accent);}
 .stat-card .d.flat{color:var(--faint);}
 .stat-card .v{font-size:21px;font-weight:800;letter-spacing:-.02em;margin-top:5px;font-variant-numeric:tabular-nums;color:var(--ink);}
@@ -913,7 +918,8 @@ body.drag-lock,body.drag-lock *{-webkit-user-select:none !important;user-select:
 
     <div class="hello">
       <div class="date" id="todayDate"></div>
-      <div class="hi">It’s gym time, <b id="dadName">Stock</b></div>
+      <div class="hi">No excuses, <b id="dadName">Stock</b></div>
+      <div class="pace" id="paceLine"></div>
       <div id="personalMsg"><div class="from" id="personalFrom">A note</div><div class="msg" id="personalMsgText"></div></div>
     </div>
 
@@ -1145,7 +1151,7 @@ body.drag-lock,body.drag-lock *{-webkit-user-select:none !important;user-select:
 </div>
 
 <div id="confetti"></div>
-<div class="prbanner" id="prbanner"><div class="pb-t">New PR! 🎉</div><div class="pb-s" id="prbannerText"></div></div>
+<div class="prbanner" id="prbanner"><div class="pb-t">New PR. Now beat it.</div><div class="pb-s" id="prbannerText"></div></div>
 <button class="update-fab" id="updateFab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.5 9a9 9 0 0114.85-3.36L23 10M1 14l4.65 4.36A9 9 0 0020.5 15"/></svg> Update</button>
 <div class="whatsnew" id="whatsNew">
   <div class="wn-txt"><b>Updated!</b> Check the <b>Progress</b> tab for what&#39;s new.</div>
@@ -1166,7 +1172,7 @@ const DISPLAY_NAME     = "Stock";
 const ATHLETE_KEY      = "Stock";       // backend identity (Stock himself)
 const DAD_NAME         = DISPLAY_NAME;  // legacy alias, display only
 /* ========================================================================== */
-const APP_VERSION = "2026.09.28b";
+const APP_VERSION = "2026.09.28c";
 /* Owner profile — unset. Never populate this in a public repo with real
    personal details; it ships in the page source. */
 const PROFILE = null;
@@ -1575,7 +1581,7 @@ function celebratePR(name,set,e1){
   const b=document.getElementById("prbanner");
   document.getElementById("prbannerText").textContent =
     name+" · "+num(set.weight)+" "+unit+" × "+num(set.reps)+"  (est. 1RM "+e1+")";
-  b.classList.add("show"); confetti();
+  b.classList.add("show");  // no confetti in this one
   if(navigator.vibrate){ try{navigator.vibrate([60,40,60,40,120]);}catch(e){} }
   clearTimeout(b._t); b._t=setTimeout(()=>b.classList.remove("show"),4200);
 }
@@ -1611,7 +1617,7 @@ function finishWorkout(){
   if(dayName){ const rts=loadRoutines(); rts[dayName.toLowerCase()]={name:dayName,exercises:exercises.map(e=>e.name)}; saveRoutines(rts); }
   draft=blankDraft(); saveDraft(); sessionPRs={}; stopWorkoutClock(); closeRest();
   renderToday(); renderHistory(); renderRecords(); updateStats(); renderHome(); renderStats(); renderPlan(); syncPush();
-  toast("Saved. Strong work 💪"); switchTab("history");
+  toast("Logged. Beat it next time."); switchTab("history");
 }
 
 /* ======================= HISTORY ======================= */
@@ -1931,10 +1937,10 @@ function renderRecords(){
 function updateStats(){
   const ws=loadWorkouts();
   const el=document.getElementById("statLine");
-  if(!ws.length){ el.textContent="No workouts logged yet. Today's the day."; return; }
+  if(!ws.length){ el.textContent="Nothing logged. Zero is a choice."; return; }
   const sets=ws.reduce((n,w)=>n+w.exercises.reduce((m,e)=>m+e.sets.length,0),0);
   const vol=ws.reduce((t,w)=>t+w.exercises.reduce((x,e)=>x+e.sets.reduce((y,s)=>y+num(s.weight)*num(s.reps),0),0),0);
-  el.innerHTML=ws.length+" workouts · "+sets+" sets · "+fmtVol(vol)+" total volume.<br>Keep showing up, "+DAD_NAME+".";
+  el.innerHTML=ws.length+" workouts · "+sets+" sets · "+fmtVol(vol)+" total volume.<br>Don't get comfortable, "+DAD_NAME+".";
 }
 function renderRestSeg(){
   const seg=document.getElementById("restSeg"); if(!seg) return;
@@ -2778,13 +2784,34 @@ function renderStreakStrip(ws, dayMap){
     let hit=0;
     for(let i=0;i<7;i++){ const d=new Date(m); d.setDate(m.getDate()+i); if(dayMap[isoOf(d)]) hit++; }
     if(wk<12){ total+=hit; if(hit) weeksWithData++; }
-    if(hit) streak++;
+    if(hit>=weekTarget) streak++;          // strict: only weeks that hit the target
     else if(wk>0) break;
   }
   const el=id=>document.getElementById(id);
   if(el("cgStreak")) el("cgStreak").innerHTML=streak+'<small>wk</small>';
   if(el("cgAvg"))    el("cgAvg").textContent=(Math.round((total/Math.max(1,weeksWithData||1))*10)/10).toString();
   if(el("cgTotal"))  el("cgTotal").textContent=total;
+  renderPace(ws, dayMap);
+}
+
+/* Blunt accountability line under the greeting: where the week stands and
+   how long since the last session. No softening. */
+function renderPace(ws, dayMap){
+  const line=document.getElementById("paceLine"); if(!line) return;
+  if(!ws.length){ line.innerHTML=""; return; }
+  const now=new Date(), mon=mondayOf(now), idx=(now.getDay()+6)%7, today=isoOf(now);
+  let done=0;
+  for(let i=0;i<7;i++){ const d=new Date(mon); d.setDate(mon.getDate()+i); if(dayMap[isoOf(d)]) done++; }
+  const need=weekTarget-done, left=7-idx-(dayMap[today]?1:0);
+  let last=null; for(const w of ws) if(!last||w.date>last) last=w.date;
+  const gap=last?Math.round((new Date(today+"T12:00")-new Date(last+"T12:00"))/864e5):0;
+  let msg, cls="";
+  if(need<=0){ msg="Target hit, "+done+" of "+weekTarget+". Don't coast."; }
+  else if(need>left){ msg="<b>"+done+" of "+weekTarget+".</b> The week's gone. Own it and don't repeat it."; cls="bad"; }
+  else if(need===left){ msg="<b>"+need+" to go, "+left+" "+(left===1?"day":"days")+" left.</b> No slack. Every day from here."; cls="bad"; }
+  else { msg="<b>"+done+" of "+weekTarget+"</b> this week. "+need+" more, "+left+" days left."; }
+  if(gap>=3 && !dayMap[today]) msg="<b>"+gap+" days</b> since you lifted. "+msg;
+  line.className="pace "+cls; line.innerHTML=msg;
 }
 
 function renderPBs(ws){
@@ -2863,13 +2890,13 @@ function syncHomeMode(){
   let done=0;
   for(let i=0;i<7;i++){ const d=new Date(mon); d.setDate(mon.getDate()+i); if(dayMap[isoOf(d)]) done++; }
 
-  // consecutive prior weeks with at least one workout
+  // consecutive weeks that HIT the target (strict); the current week can't break it
   let streak=0;
   for(let wk=0; wk<52; wk++){
     const m=new Date(mon); m.setDate(mon.getDate()-wk*7);
-    let hit=false;
-    for(let i=0;i<7;i++){ const d=new Date(m); d.setDate(m.getDate()+i); if(dayMap[isoOf(d)]){ hit=true; break; } }
-    if(hit) streak++;
+    let hit=0;
+    for(let i=0;i<7;i++){ const d=new Date(m); d.setDate(m.getDate()+i); if(dayMap[isoOf(d)]) hit++; }
+    if(hit>=weekTarget) streak++;
     else if(wk>0) break;
   }
 
