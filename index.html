@@ -261,6 +261,15 @@ input,textarea{font-family:inherit;}
   transition:transform .15s var(--ease),background .2s;
 }
 .add-ex:active{transform:scale(.985);background:var(--accent-2);}
+/* superset: an outline twin of Add Exercise, and a bracket that links the pair.
+   The link is display-only; each lift still logs, rests and saves on its own. */
+.add-ss{background:transparent;color:var(--ink);border:1.5px solid var(--line-2);margin-top:10px;padding:14px;}
+.add-ss:active{background:var(--paper-2);}
+.ex.ss-in{border-left:3px solid var(--good);}
+.ex.ss-first{margin-bottom:6px;border-bottom-left-radius:6px;border-bottom-right-radius:6px;}
+.ex.ss-last{border-top-left-radius:6px;border-top-right-radius:6px;}
+.ss-label{display:flex;align-items:center;gap:8px;margin:4px 0 7px 2px;font-size:10.5px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--good-ink);}
+.ss-label .ss-x{margin-left:auto;background:none;border:none;color:var(--muted);font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:none;cursor:pointer;padding:2px 4px;font-family:inherit;}
 .add-ex svg{width:19px;height:19px;}
 
 /* ---------- summary strip ---------- */
@@ -1030,6 +1039,10 @@ body.drag-lock,body.drag-lock *{-webkit-user-select:none !important;user-select:
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
       Add Exercise
     </button>
+    <button class="add-ex add-ss" id="addSupersetBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 7H5v10h3M16 7h3v10h-3M9 12h6"/></svg>
+      Add Superset
+    </button>
 
     <div class="summary num" id="summary" style="display:none;">
       <div class="cellx"><div class="v" id="sVol">0<small>lb</small></div><div class="k">Volume</div></div>
@@ -1198,7 +1211,7 @@ body.drag-lock,body.drag-lock *{-webkit-user-select:none !important;user-select:
 <div class="sheet" id="sheet">
   <div class="grip"></div>
   <div class="sh-head">
-    <div class="sh-title">Add an exercise</div>
+    <div class="sh-title" id="shTitle">Add an exercise</div>
     <input class="sh-search" id="exSearch" placeholder="Search or type a new lift" autocomplete="off" autocapitalize="words">
   </div>
   <div class="sh-list" id="exList"></div>
@@ -1227,7 +1240,7 @@ const DISPLAY_NAME     = "Stock";
 const ATHLETE_KEY      = "Stock";       // backend identity (Stock himself)
 const DAD_NAME         = DISPLAY_NAME;  // legacy alias, display only
 /* ========================================================================== */
-const APP_VERSION = "2026.09.28j";
+const APP_VERSION = "2026.09.28k";
 /* Owner profile — unset. Never populate this in a public repo with real
    personal details; it ships in the page source. */
 const PROFILE = null;
@@ -1403,11 +1416,20 @@ function renderToday(){
     list.appendChild(banner);
   }
 
+  const ssOf=i=>{ const e=draft.exercises[i]; return e&&e.ss; };
   draft.exercises.forEach((ex,ei)=>{
     const prev=prevFor(ex.name);
+    const ssPrev=ex.ss && ssOf(ei-1)===ex.ss, ssNext=ex.ss && ssOf(ei+1)===ex.ss;
+    if(ex.ss && !ssPrev && ssNext){
+      const lab=document.createElement("div"); lab.className="ss-label";
+      lab.innerHTML='Superset<button class="ss-x" type="button">Unlink</button>';
+      lab.querySelector(".ss-x").onclick=()=>{ const id=ex.ss; draft.exercises.forEach(e=>{ if(e.ss===id) delete e.ss; }); saveDraft(); renderToday(); };
+      list.appendChild(lab);
+    }
+    const ssCls=(ssPrev||ssNext)?(" ss-in"+(ssNext?" ss-first":"")+(ssPrev?" ss-last":"")):"";
     const allDone = ex.sets.length>0 && ex.sets.every(s=>s.done);
     const collapsed = allDone && ex.collapsed!==false;   // auto-collapse when every set is done
-    const card=document.createElement("div"); card.className="ex"+(collapsed?" collapsed":"");
+    const card=document.createElement("div"); card.className="ex"+(collapsed?" collapsed":"")+ssCls;
 
     if(collapsed){
       const cvol=ex.sets.reduce((t,s)=>t+num(s.weight)*num(s.reps),0);
@@ -2165,12 +2187,20 @@ function renderSync(){
 }
 
 /* ======================= EXERCISE PICKER SHEET ======================= */
+let ssPick=null;   // {id, step} while picking the two lifts of a superset
+function setSheetTitle(){
+  document.getElementById("shTitle").textContent = !ssPick ? "Add an exercise" : (ssPick.step===1 ? "Superset: first lift" : "Superset: second lift");
+}
+function openSuperset(){ ssPick={id:"ss"+Date.now().toString(36), step:1}; openSheet(); }
 function openSheet(){
+  setSheetTitle();
+  clearTimeout(qpTimer); document.getElementById("qpop").classList.remove("show");   // a quote must not cover the picker
   document.getElementById("scrim").classList.add("show");
   document.getElementById("sheet").classList.add("show");
   const s=document.getElementById("exSearch"); s.value=""; renderSheet("");
 }
 function closeSheet(){
+  ssPick=null;   // cancelling after the first pick just leaves a normal lift
   document.getElementById("scrim").classList.remove("show");
   const sh=document.getElementById("sheet"); sh.classList.remove("show"); sh.style.bottom="";
   document.getElementById("exSearch").blur();
@@ -2200,11 +2230,17 @@ function rowEl(label,tag,create,value){
 }
 function addExercise(name){
   const clean=(name||"").trim(); if(!clean) return;
-  draft.exercises.push({ name:clean, sets:[
+  const ex={ name:clean, sets:[
     {weight:"",reps:"",done:false},
     {weight:"",reps:"",done:false},
     {weight:"",reps:"",done:false}
-  ] });
+  ] };
+  if(ssPick){ ex.ss=ssPick.id; }
+  draft.exercises.push(ex);
+  if(ssPick && ssPick.step===1){   // keep the sheet open for the second lift
+    ssPick.step=2; saveDraft(); renderToday(); setSheetTitle();
+    const q=document.getElementById("exSearch"); q.value=""; renderSheet(""); return;
+  }
   saveDraft(); closeSheet(); renderToday();
   requestAnimationFrame(()=>{ const cards=document.querySelectorAll(".ex"); const last=cards[cards.length-1];
     if(last){ last.scrollIntoView({behavior:"smooth",block:"center"}); } });
@@ -2622,6 +2658,7 @@ document.getElementById("clock").onclick=()=>{
   if(confirm("Reset the workout timer? Your logged sets stay.")){ draft.startedAt=null; draft.lastInput=null; saveDraft(); stopWorkoutClock(); }
 };
 document.getElementById("addExerciseBtn").onclick=openSheet;
+document.getElementById("addSupersetBtn").onclick=openSuperset;
 document.getElementById("scrim").onclick=closeSheet;
 (function(){
   const sheet=document.getElementById("sheet"), list=document.getElementById("exList");
