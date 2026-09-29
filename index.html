@@ -88,7 +88,13 @@ input,textarea{font-family:inherit;}
   display:none;align-items:center;gap:7px;
   font-weight:700;font-size:15px;letter-spacing:.02em;color:var(--ink);
 }
-.clock.on{display:inline-flex;cursor:pointer;}
+.clock.on{display:inline-flex;cursor:pointer;padding:6px 11px 6px 10px;border:1px solid var(--line-2);border-radius:999px;
+  -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;}
+.clock .ck-ic{display:flex;color:var(--muted);}
+.clock .ck-ic svg{width:12px;height:12px;}
+.clock.paused{border-color:var(--prgold);color:var(--prgold);}
+.clock.paused .dot{animation:none;background:var(--prgold);}
+.clock.paused .ck-ic{color:var(--prgold);}
 .clock .dot{width:8px;height:8px;border-radius:50%;background:var(--accent);
   animation:pulse 1.6s var(--ease) infinite;}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
@@ -980,7 +986,7 @@ body.drag-lock,body.drag-lock *{-webkit-user-select:none !important;user-select:
       <div class="title" id="barTitle">Today's Workout</div>
       <div class="sub" id="barSub"></div>
     </div>
-    <div class="clock num" id="clock"><span class="dot"></span><span id="clockTime">0:00</span></div>
+    <div class="clock num" id="clock" role="button" aria-label="Pause workout"><span class="dot"></span><span id="clockTime">0:00</span><span class="ck-ic" id="clockIc"></span></div>
   </div>
 </div>
 
@@ -1250,7 +1256,7 @@ const DISPLAY_NAME     = "Stock";
 const ATHLETE_KEY      = "Stock";       // backend identity (Stock himself)
 const DAD_NAME         = DISPLAY_NAME;  // legacy alias, display only
 /* ========================================================================== */
-const APP_VERSION = "2026.09.28o";
+const APP_VERSION = "2026.09.29a";
 /* Owner profile — unset. Never populate this in a public repo with real
    personal details; it ships in the page source. */
 const PROFILE = null;
@@ -1361,7 +1367,7 @@ const loadRoutines = () => {
   return {};
 };
 const saveRoutines = o => localStorage.setItem(routinesKey(), JSON.stringify(o));
-function blankDraft(){ return { exercises:[], feel:"", note:"", startedAt:null, lastInput:null, name:"", fromPlan:false, planToday:false }; }
+function blankDraft(){ return { exercises:[], feel:"", note:"", startedAt:null, lastInput:null, pausedAt:null, pausedMs:0, name:"", fromPlan:false, planToday:false }; }
 let draft = loadDraft();
 let unit = localStorage.getItem(UNIT_KEY) || "lb";
 let restTarget = parseInt(localStorage.getItem(REST_KEY),10) || 120;
@@ -1472,7 +1478,7 @@ function renderToday(){
     const menu=document.createElement("button"); menu.className="ex-menu"; menu.setAttribute("aria-label","Remove exercise");
     menu.innerHTML='<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 7h14M10 11v5M14 11v5M6 7l1 12a1 1 0 001 1h8a1 1 0 001-1l1-12M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>';
     menu.onclick=()=>{ if(confirm("Remove "+ex.name+"?")){ draft.exercises.splice(ei,1);
-      if(!draft.exercises.length){ draft.startedAt=null; stopWorkoutClock(); } saveDraft(); renderToday(); } };
+      if(!draft.exercises.length){ clearClock(); stopWorkoutClock(); } saveDraft(); renderToday(); } };
     head.append(nameI,vol);
     if(allDone){   // expanded but complete -> offer to collapse it back down
       const cb=document.createElement("button"); cb.className="ex-menu"; cb.setAttribute("aria-label","Collapse");
@@ -1591,7 +1597,22 @@ function liveSummary(){
 /* ---------- workout clock ---------- */
 let clockInt=null;
 // timer starts when a set is actually entered, and turns itself off after 3h with no input
-function markStart(){ const now=Date.now(); if(!draft.startedAt) draft.startedAt=now; draft.lastInput=now; saveDraft(); startWorkoutClock(); }
+function markStart(){ const now=Date.now(); if(!draft.startedAt) draft.startedAt=now; if(draft.pausedAt) resumeClock(now); draft.lastInput=now; saveDraft(); startWorkoutClock(); }
+/* ---- pause: paused time is excluded from the workout's length ---- */
+function workoutElapsedMs(now){
+  if(!draft.startedAt) return 0;
+  const end=draft.pausedAt||now||Date.now();
+  return Math.max(0,end-draft.startedAt-(draft.pausedMs||0));
+}
+function resumeClock(now){ draft.pausedMs=(draft.pausedMs||0)+((now||Date.now())-draft.pausedAt); draft.pausedAt=null; }
+function clearClock(){ draft.startedAt=null; draft.lastInput=null; draft.pausedAt=null; draft.pausedMs=0; }
+function togglePause(){
+  if(!draft.startedAt) return;
+  const now=Date.now();
+  if(draft.pausedAt){ resumeClock(now); draft.lastInput=now; toast("Back at it"); }
+  else { draft.pausedAt=now; toast("Paused. Tap the timer to resume."); }
+  saveDraft(); tickClock();
+}
 function markActivity(){ if(draft.startedAt){ draft.lastInput=Date.now(); saveDraft(); } }
 function startWorkoutClock(){
   if(!draft.startedAt) return;
@@ -1601,10 +1622,16 @@ function startWorkoutClock(){
 function tickClock(){
   if(!draft.startedAt) return;
   const now=Date.now();
-  if(now-(draft.lastInput||draft.startedAt) > 3*3600*1000){   // 3h with no input -> auto-off
-    draft.startedAt=null; draft.lastInput=null; saveDraft(); stopWorkoutClock(); return;
+  if(!draft.pausedAt && now-(draft.lastInput||draft.startedAt) > 3*3600*1000){   // 3h with no input -> auto-off (never while paused)
+    clearClock(); saveDraft(); stopWorkoutClock(); return;
   }
-  document.getElementById("clockTime").textContent=fmtClock(Math.floor((now-draft.startedAt)/1000));
+  const paused=!!draft.pausedAt, ck=document.getElementById("clock");
+  document.getElementById("clockTime").textContent=(paused?"Paused ":"")+fmtClock(Math.floor(workoutElapsedMs(now)/1000));
+  ck.classList.toggle("paused",paused);
+  ck.setAttribute("aria-label",paused?"Resume workout":"Pause workout");
+  document.getElementById("clockIc").innerHTML=paused
+    ? '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15l13-7.5z"/></svg>'
+    : '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="4" width="5" height="16" rx="1.2"/><rect x="14" y="4" width="5" height="16" rx="1.2"/></svg>';
 }
 function stopWorkoutClock(){ if(clockInt){ clearInterval(clockInt); clockInt=null; } document.getElementById("clock").classList.remove("on"); }
 
@@ -1701,7 +1728,7 @@ function finishWorkout(){
     .map(e=>({ name:e.name, sets:e.sets.filter(s=>num(s.reps)>0).map(s=>({weight:String(num(s.weight)),reps:String(num(s.reps))})) }))
     .filter(e=>e.sets.length>0);
   if(!exercises.length){ toast("Log at least one set first"); return; }
-  let dur=null; if(draft.startedAt) dur=Math.min(5*3600,Math.max(60,Math.floor((Date.now()-draft.startedAt)/1000)));
+  let dur=null; if(draft.startedAt) dur=Math.min(5*3600,Math.max(60,Math.floor(workoutElapsedMs()/1000)));   // excludes paused time
   const dayName=(draft.name||"").trim();
   const ws=loadWorkouts();
   ws.push({ id:uid(), date:todayISO(), name:dayName, feel:draft.feel||"", note:(draft.note||"").trim(),
@@ -2692,10 +2719,16 @@ function switchTab(tab){
 document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>switchTab(b.dataset.tab));
 document.getElementById("planPrev").onclick=()=>{ const v=(planViewWeek!=null?planViewWeek:(planState?planState.week:null)); if(v!=null) planPull(v-1); };
 document.getElementById("planNext").onclick=()=>{ const v=(planViewWeek!=null?planViewWeek:(planState?planState.week:null)); if(v!=null) planPull(v+1); };
-document.getElementById("clock").onclick=()=>{
-  if(!draft.startedAt) return;
-  if(confirm("Reset the workout timer? Your logged sets stay.")){ draft.startedAt=null; draft.lastInput=null; saveDraft(); stopWorkoutClock(); }
-};
+/* timer pill: tap = pause/resume, long-press = reset */
+(function(){
+  const ck=document.getElementById("clock"); let lp=null, longFired=false;
+  const down=()=>{ longFired=false; lp=setTimeout(()=>{ longFired=true;
+    if(draft.startedAt && confirm("Reset the workout timer? Your logged sets stay.")){ clearClock(); saveDraft(); stopWorkoutClock(); } },650); };
+  const up=()=>{ clearTimeout(lp); };
+  ck.addEventListener("touchstart",down,{passive:true}); ck.addEventListener("touchend",up); ck.addEventListener("touchcancel",up);
+  ck.addEventListener("mousedown",down); ck.addEventListener("mouseup",up); ck.addEventListener("mouseleave",up);
+  ck.onclick=()=>{ if(longFired){ longFired=false; return; } togglePause(); };
+})();
 document.getElementById("addExerciseBtn").onclick=openSheet;
 document.getElementById("addSupersetBtn").onclick=openSuperset;
 document.getElementById("scrim").onclick=closeSheet;
@@ -2837,8 +2870,9 @@ document.getElementById("unitToggle").onclick=e=>{ e.preventDefault();
   }
   if(draft.startedAt){
     const idleHrs=(Date.now()-(draft.lastInput||draft.startedAt))/3600000;
-    if(idleHrs<3 && draft.exercises.length){ startWorkoutClock(); }
-    else { draft.startedAt=null; draft.lastInput=null; saveDraft(); }   // 3h+ idle: don't resume
+    if(draft.pausedAt && draft.exercises.length){ startWorkoutClock(); }   // paused on purpose: keep it, still paused
+    else if(idleHrs<3 && draft.exercises.length){ startWorkoutClock(); }
+    else { clearClock(); saveDraft(); }   // 3h+ idle: don't resume
   }
 })();
 
