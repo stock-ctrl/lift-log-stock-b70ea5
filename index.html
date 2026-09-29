@@ -352,6 +352,31 @@ input,textarea{font-family:inherit;}
 .h-ex .st{font-size:13.5px;color:var(--muted);margin-top:3px;display:flex;flex-wrap:wrap;gap:5px 14px;}
 .h-note{font-size:14px;font-style:italic;color:var(--ink-2);margin-top:11px;background:var(--paper-2);border-radius:var(--r-sm);padding:10px 13px;}
 .h-del{margin-top:12px;background:none;border:none;color:var(--accent);font-size:13px;font-weight:700;cursor:pointer;padding:4px 0;}
+.h-acts{display:flex;gap:18px;align-items:center;}
+/* edit a saved workout (History) */
+.hed{margin-top:12px;display:flex;flex-direction:column;gap:12px;cursor:default;}
+.hed label{display:block;font-size:10.5px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:5px;}
+.hed input,.hed textarea{width:100%;box-sizing:border-box;background:var(--paper-2);border:1px solid var(--line);border-radius:10px;padding:10px 11px;
+  font-size:16px;color:var(--ink);font-family:inherit;}
+.hed input:focus,.hed textarea:focus{outline:none;border-color:var(--accent);}
+.hed-row{display:flex;gap:10px;}
+.hed-row>div{flex:1;min-width:0;}
+.hed-dur{display:flex;align-items:center;gap:6px;}
+.hed-dur input{width:64px;text-align:center;}
+.hed-dur span{color:var(--muted);font-size:14px;font-weight:700;}
+.hed-ex{background:var(--paper-2);border:1px solid var(--line);border-radius:12px;padding:10px;}
+.hed-exh{display:flex;gap:8px;align-items:center;margin-bottom:8px;}
+.hed-exh input{font-weight:750;background:var(--card);}
+.hed-set{display:grid;grid-template-columns:22px 1fr 1fr 34px;gap:6px;align-items:center;margin-bottom:6px;}
+.hed-set .i{font-size:12px;font-weight:800;color:var(--muted);text-align:center;}
+.hed-set input{text-align:center;padding:8px 6px;background:var(--card);}
+.hed-x{width:34px;height:34px;border-radius:9px;border:1px solid var(--line-2);background:none;color:var(--muted);font-size:15px;cursor:pointer;flex-shrink:0;}
+.hed-add{background:none;border:1px dashed var(--line-2);border-radius:9px;color:var(--ink-2);font-size:13px;font-weight:700;padding:8px;width:100%;cursor:pointer;font-family:inherit;}
+.hed-cols{display:grid;grid-template-columns:22px 1fr 1fr 34px;gap:6px;font-size:10px;font-weight:800;letter-spacing:.12em;color:var(--faint);text-align:center;margin-bottom:4px;}
+.hed-btns{display:flex;gap:10px;}
+.hed-btns button{flex:1;padding:12px;border-radius:11px;font-size:15px;font-weight:750;cursor:pointer;font-family:inherit;}
+.hed-save{background:var(--good);color:var(--on-good);border:none;}
+.hed-cancel{background:none;color:var(--ink-2);border:1px solid var(--line-2);}
 
 /* ---------- records / progress ---------- */
 .pr{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 2px;border-bottom:1px solid var(--line);cursor:pointer;}
@@ -1256,7 +1281,7 @@ const DISPLAY_NAME     = "Stock";
 const ATHLETE_KEY      = "Stock";       // backend identity (Stock himself)
 const DAD_NAME         = DISPLAY_NAME;  // legacy alias, display only
 /* ========================================================================== */
-const APP_VERSION = "2026.09.29a";
+const APP_VERSION = "2026.09.29b";
 /* Owner profile — unset. Never populate this in a public repo with real
    personal details; it ships in the page source. */
 const PROFILE = null;
@@ -1764,7 +1789,7 @@ function renderHistory(){
     const meta=document.createElement("div"); meta.className="h-meta num";
     meta.innerHTML=(w.name?'<span>'+shortDate(w.date)+'</span>':'')+
                    '<span><b>'+fmtVol(vol)+'</b> '+u+' volume</span><span><b>'+setN+'</b> sets</span>'+
-                   (w.durationSec?'<span><b>'+fmtClock(w.durationSec)+'</b></span>':'');
+                   (w.durationSec?'<span><b>'+fmtLen(w.durationSec)+'</b></span>':'');
     item.appendChild(meta);
 
     const li=document.createElement("div"); li.className="h-list";
@@ -1779,16 +1804,92 @@ function renderHistory(){
       det.appendChild(he);
     });
     if(w.note){ const n=document.createElement("div"); n.className="h-note"; n.textContent="“"+w.note+"”"; det.appendChild(n); }
+    const acts=document.createElement("div"); acts.className="h-acts";
+    const edit=document.createElement("button"); edit.className="h-del"; edit.textContent="Edit workout";
+    edit.onclick=ev=>{ ev.stopPropagation(); openWorkoutEditor(w, det); };
     const del=document.createElement("button"); del.className="h-del"; del.textContent="Delete workout";
     del.onclick=ev=>{ ev.stopPropagation(); if(confirm("Delete this workout from "+shortDate(w.date)+"?")){
       saveWorkouts(loadWorkouts().filter(x=>x.id!==w.id)); renderHistory(); renderRecords(); updateStats(); renderToday(); queuePush(); toast("Deleted"); } };
-    det.appendChild(del);
+    acts.append(edit,del); det.appendChild(acts);
     item.appendChild(det);
 
     item.onclick=()=>det.classList.toggle("open");
     wrap.appendChild(item);
   });
 }
+/* Edit a saved workout in place. Works on a copy; Save writes it back by id,
+   re-renders everything derived from history (records, progress, calendar)
+   and backs it up. Sets with 0 reps and lifts with no sets are dropped,
+   the same rule finishWorkout uses. */
+function openWorkoutEditor(w, det){
+  const e=JSON.parse(JSON.stringify(w));
+  const ed=document.createElement("div"); ed.className="hed";
+  ed.addEventListener("click",ev=>ev.stopPropagation());
+  const secs=num(e.durationSec)||0;
+  ed.innerHTML=
+    '<div class="hed-row"><div><label>Name</label><input class="hed-name" autocapitalize="words"></div>'+
+    '<div style="flex:0 0 150px"><label>Date</label><input type="date" class="hed-date"></div></div>'+
+    '<div><label>Length</label><div class="hed-dur"><input type="number" inputmode="numeric" min="0" max="5" class="hed-h"><span>hr</span>'+
+    '<input type="number" inputmode="numeric" min="0" max="59" class="hed-m"><span>min</span></div></div>'+
+    '<div class="hed-exs"></div>'+
+    '<div><label>Note</label><textarea class="hed-note" rows="2"></textarea></div>'+
+    '<div class="hed-btns"><button class="hed-cancel" type="button">Cancel</button><button class="hed-save" type="button">Save</button></div>';
+  ed.querySelector(".hed-name").value=e.name||"";
+  ed.querySelector(".hed-date").value=e.date||"";
+  ed.querySelector(".hed-h").value=Math.floor(secs/3600);
+  ed.querySelector(".hed-m").value=Math.round((secs%3600)/60);
+  ed.querySelector(".hed-note").value=e.note||"";
+  const exWrap=ed.querySelector(".hed-exs");
+  const drawEx=()=>{
+    exWrap.innerHTML="";
+    e.exercises.forEach((x,xi)=>{
+      const box=document.createElement("div"); box.className="hed-ex";
+      const h=document.createElement("div"); h.className="hed-exh";
+      const nm=document.createElement("input"); nm.value=x.name; nm.oninput=()=>{ x.name=nm.value; };
+      const rx=document.createElement("button"); rx.type="button"; rx.className="hed-x"; rx.textContent="✕"; rx.setAttribute("aria-label","Remove lift");
+      rx.onclick=()=>{ if(confirm("Remove "+(x.name||"this lift")+" from this workout?")){ e.exercises.splice(xi,1); drawEx(); } };
+      h.append(nm,rx); box.appendChild(h);
+      const cols=document.createElement("div"); cols.className="hed-cols"; cols.innerHTML='<span>SET</span><span>'+(e.unit||unit).toUpperCase()+'</span><span>REPS</span><span></span>'; box.appendChild(cols);
+      x.sets.forEach((st,si)=>{
+        const r=document.createElement("div"); r.className="hed-set";
+        const i=document.createElement("div"); i.className="i"; i.textContent=si+1;
+        const wI=document.createElement("input"); wI.type="text"; wI.inputMode="decimal"; wI.value=st.weight; wI.oninput=()=>{ st.weight=wI.value; };
+        const rI=document.createElement("input"); rI.type="text"; rI.inputMode="numeric"; rI.value=st.reps; rI.oninput=()=>{ st.reps=rI.value; };
+        const xs=document.createElement("button"); xs.type="button"; xs.className="hed-x"; xs.textContent="−"; xs.setAttribute("aria-label","Remove set");
+        xs.onclick=()=>{ x.sets.splice(si,1); drawEx(); };
+        r.append(i,wI,rI,xs); box.appendChild(r);
+      });
+      const add=document.createElement("button"); add.type="button"; add.className="hed-add"; add.textContent="+ Add set";
+      add.onclick=()=>{ const last=x.sets[x.sets.length-1]; x.sets.push({weight:last?last.weight:"",reps:last?last.reps:""}); drawEx(); };
+      box.appendChild(add); exWrap.appendChild(box);
+    });
+  };
+  drawEx();
+  const kids=[...det.children]; kids.forEach(k=>k.style.display="none");
+  det.appendChild(ed); det.classList.add("open");
+  const close=()=>{ ed.remove(); kids.forEach(k=>k.style.display=""); };
+  ed.querySelector(".hed-cancel").onclick=close;
+  ed.querySelector(".hed-save").onclick=()=>{
+    const date=ed.querySelector(".hed-date").value;
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(date)){ toast("Pick a date"); return; }
+    const hh=Math.max(0,Math.min(5,Math.floor(num(ed.querySelector(".hed-h").value))));
+    const mm=Math.max(0,Math.min(59,Math.floor(num(ed.querySelector(".hed-m").value))));
+    const exercises=e.exercises
+      .map(x=>({ name:(x.name||"").trim()||"Exercise", sets:x.sets.filter(st=>num(st.reps)>0).map(st=>({weight:String(num(st.weight)),reps:String(num(st.reps))})) }))
+      .filter(x=>x.sets.length>0);
+    if(!exercises.length){ toast("Keep at least one set, or delete the workout"); return; }
+    const all=loadWorkouts(); const k=all.findIndex(x=>x.id===w.id);
+    if(k<0){ toast("Couldn't find that workout"); return; }
+    const dur=hh*3600+mm*60;
+    all[k]=Object.assign({},all[k],{ name:ed.querySelector(".hed-name").value.trim(), date, note:ed.querySelector(".hed-note").value.trim(),
+      durationSec: dur>0?dur:null, exercises });
+    saveWorkouts(all);
+    renderHistory(); renderRecords(); updateStats(); renderHome(); renderStats(); renderToday(); queuePush();
+    toast("Workout updated");
+  };
+}
+/* 6300 -> "1h 45m", 1920 -> "32 min" */
+function fmtLen(sec){ const m=Math.round(num(sec)/60), h=Math.floor(m/60); return h ? h+"h "+String(m%60).padStart(2,"0")+"m" : m+" min"; }
 function feelColor(f){ return {Strong:"var(--accent)",Solid:"var(--good)",Tired:"oklch(0.62 0.12 75)",Rough:"oklch(0.55 0.14 35)"}[f]||"var(--muted)"; }
 
 /* ======================= PROGRESS: bodyweight ======================= */
@@ -3047,7 +3148,11 @@ function syncHomeMode(){
 
   const busy=workoutInProgress();
   panel.style.display = busy ? "none" : "";
-  mini.style.display  = busy ? "flex" : "none";
+  // Unsaved workout in progress: the lifts go straight under the app bar.
+  // Greeting, pace line and the stats strip come back once it's saved.
+  const hello=document.querySelector("#view-today .hello");
+  if(hello) hello.style.display = busy ? "none" : "";
+  mini.style.display  = "none";
   if(!busy) return;
 
   const ws=loadWorkouts();
