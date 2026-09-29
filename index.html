@@ -11,7 +11,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#0f0f0f">
 <title>Stock's Lifting Log</title>
-<link rel="preload" as="image" href="it-bg.webp"><link rel="preload" as="image" href="it-s0.webp"><link rel="preload" as="image" href="it-s1.webp"><link rel="preload" as="image" href="it-s2.webp"><link rel="preload" as="image" href="it-s3.webp"><link rel="preload" as="image" href="it-slash.webp">
+<link rel="preload" as="image" href="it-tex.webp"><link rel="preload" as="image" href="it-s0.webp"><link rel="preload" as="image" href="it-s1.webp"><link rel="preload" as="image" href="it-s2.webp"><link rel="preload" as="image" href="it-s3.webp"><link rel="preload" as="image" href="it-slash.webp">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
@@ -549,15 +549,15 @@ input,textarea{font-family:inherit;}
    then the green slash swipes across and the card jolts. Layers are cut from
    the one ChatGPT image (it-*.webp). The overlay fade is pure CSS, so it
    clears itself even if the script never runs. */
-.intro-ov{position:fixed;inset:0;z-index:90;background:#0c0c0a;display:flex;align-items:center;justify-content:center;
+.intro-ov{position:fixed;inset:0;z-index:90;display:flex;
+  --itw:min(96vw,62vh);   /* stage width; the grain tile is scaled to match it */
+  background:#0e0d0b url(it-tex.webp) repeat center/var(--itw) calc(var(--itw)*2.392);   /* grain synthesized from the art's own texture, same scale */align-items:center;justify-content:center;
   animation:introOut .45s var(--ease) 6s forwards;}          /* safety net if nothing ever loads */
 .intro-ov.go{animation:introOut2 .45s var(--ease) 2.35s forwards;}   /* new name = restarts the clock at .go */
 .intro-ov.skip{animation:introOut .25s var(--ease) forwards;}
-.it-stage{position:relative;width:min(96vw,62vh);aspect-ratio:1;
-  -webkit-mask-image:radial-gradient(closest-side,#000 78%,transparent 100%);mask-image:radial-gradient(closest-side,#000 78%,transparent 100%);
+.it-stage{position:relative;width:var(--itw);aspect-ratio:1;
   animation:itJolt .28s ease-out 1.66s;}
 .it-stage img{position:absolute;display:block;}
-.it-bg{inset:0;width:100%;height:100%;}
 .it-s{clip-path:inset(0 0 100% 0);animation:itDown .24s cubic-bezier(.3,.6,.4,1) forwards;}
 .it-sl{clip-path:inset(0 100% 0 0);animation:itAcross .34s cubic-bezier(.5,0,.3,1) 1.32s forwards;}
 .it-s0{left:20.833%;top:17.5%;width:13.611%;height:72.639%;animation-delay:0.15s;}
@@ -959,7 +959,7 @@ body.drag-lock,body.drag-lock *{-webkit-user-select:none !important;user-select:
 </style>
 </head>
 <body>
-<div class="intro-ov" id="introOv" aria-hidden="true" onclick="this.classList.add('skip')"><div class="it-stage"><img class="it-bg" src="it-bg.webp" alt=""><img class="it-s it-s0" src="it-s0.webp" alt=""><img class="it-s it-s1" src="it-s1.webp" alt=""><img class="it-s it-s2" src="it-s2.webp" alt=""><img class="it-s it-s3" src="it-s3.webp" alt=""><img class="it-sl it-slash" src="it-slash.webp" alt=""></div></div>
+<div class="intro-ov" id="introOv" aria-hidden="true" onclick="this.classList.add('skip')"><div class="it-stage"><img class="it-s it-s0" src="it-s0.webp" alt=""><img class="it-s it-s1" src="it-s1.webp" alt=""><img class="it-s it-s2" src="it-s2.webp" alt=""><img class="it-s it-s3" src="it-s3.webp" alt=""><img class="it-sl it-slash" src="it-slash.webp" alt=""></div></div>
 <script>
 (function(){
   const ov=document.getElementById("introOv"), imgs=[...ov.querySelectorAll("img")];
@@ -1250,7 +1250,7 @@ const DISPLAY_NAME     = "Stock";
 const ATHLETE_KEY      = "Stock";       // backend identity (Stock himself)
 const DAD_NAME         = DISPLAY_NAME;  // legacy alias, display only
 /* ========================================================================== */
-const APP_VERSION = "2026.09.28n";
+const APP_VERSION = "2026.09.28o";
 /* Owner profile — unset. Never populate this in a public repo with real
    personal details; it ships in the page source. */
 const PROFILE = null;
@@ -3440,7 +3440,30 @@ function showQuote(){
   el.classList.add("show");
   clearTimeout(qpTimer); qpTimer=setTimeout(()=>el.classList.remove("show"), 9000);
 }
-document.getElementById("qpop").onclick=()=>{ clearTimeout(qpTimer); document.getElementById("qpop").classList.remove("show"); };
+/* swipe the quote up to dismiss it; a tap still closes it */
+(function(){
+  const el=document.getElementById("qpop");
+  let y0=null, dy=0, t0=0, moved=false;
+  const hide=()=>{ clearTimeout(qpTimer); el.classList.remove("show"); };
+  const reset=()=>{ el.style.transition=""; el.style.transform=""; el.style.opacity=""; };
+  el.addEventListener("touchstart",e=>{ y0=e.touches[0].clientY; dy=0; t0=Date.now(); moved=false; el.style.transition="none"; clearTimeout(qpTimer); },{passive:true});
+  el.addEventListener("touchmove",e=>{
+    if(y0===null) return; dy=e.touches[0].clientY-y0; if(Math.abs(dy)>4) moved=true;
+    const d=dy<0?dy:dy*0.25;   // follows the finger up, resists pulling down
+    el.style.transform="translateY("+d+"px)"; el.style.opacity=String(Math.max(0.2,1+Math.min(0,dy)/160));
+    if(moved) e.preventDefault();
+  },{passive:false});
+  el.addEventListener("touchend",()=>{
+    if(y0===null) return; y0=null;
+    setTimeout(()=>{ moved=false; }, 350);   // swallow only the click that ends this drag
+    const fast=dy<-25 && (Date.now()-t0)<250;
+    el.style.transition="";
+    if(dy<-60 || fast){ el.style.transform="translateY(-140%)"; el.style.opacity="0";
+      setTimeout(()=>{ hide(); el.style.transition="none"; reset(); requestAnimationFrame(()=>{ el.style.transition=""; }); },300); }
+    else { reset(); if(el.classList.contains("show")) qpTimer=setTimeout(hide,6000); }
+  });
+  el.addEventListener("click",()=>{ if(!moved) hide(); moved=false; });
+})();
 
 renderToday(); renderHistory(); renderRecords(); updateStats(); renderHome(); renderStats();
 /* Pull first, then push. The push matters even with nothing to send: if this
