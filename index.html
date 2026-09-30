@@ -194,6 +194,10 @@ input,textarea{font-family:inherit;}
   align-items:center;gap:6px;
 }
 .set-hd{padding:4px 2px 8px;}
+/* timed (run) rows: # | previous | lb | mi | min | done - no rest button */
+.set-grid.timed .set-hd,.set-grid.timed .set-row{grid-template-columns:22px minmax(0,1fr) 50px 48px 50px 44px;gap:5px;}
+.set-grid.timed .set-act{justify-content:center;}
+@media (max-width:360px){.set-grid.timed .set-hd,.set-grid.timed .set-row{grid-template-columns:18px minmax(0,1fr) 44px 42px 44px 40px;gap:4px;}}
 .set-hd span{font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);text-align:center;}
 .set-hd span:nth-child(1){text-align:center;}
 .set-hd span:nth-child(2){text-align:left;padding-left:4px;}
@@ -372,6 +376,7 @@ input,textarea{font-family:inherit;}
 .hed-set input{text-align:center;padding:8px 6px;background:var(--card);}
 .hed-x{width:34px;height:34px;border-radius:9px;border:1px solid var(--line-2);background:none;color:var(--muted);font-size:15px;cursor:pointer;flex-shrink:0;}
 .hed-add{background:none;border:1px dashed var(--line-2);border-radius:9px;color:var(--ink-2);font-size:13px;font-weight:700;padding:8px;width:100%;cursor:pointer;font-family:inherit;}
+.hed-set.t,.hed-cols.t{grid-template-columns:24px 1fr 1fr 1fr 34px;}
 .hed-cols{display:grid;grid-template-columns:22px 1fr 1fr 34px;gap:6px;font-size:10px;font-weight:800;letter-spacing:.12em;color:var(--faint);text-align:center;margin-bottom:4px;}
 .hed-btns{display:flex;gap:10px;}
 .hed-btns button{flex:1;padding:12px;border-radius:11px;font-size:15px;font-weight:750;cursor:pointer;font-family:inherit;}
@@ -731,6 +736,7 @@ body.drag-lock,body.drag-lock *{-webkit-user-select:none !important;user-select:
 .hp{margin:2px 0 4px;}
 
 /* headline stat strip, edge to edge */
+.hp-below{margin-top:26px;}
 .hp-strip{
   display:grid;grid-template-columns:repeat(3,1fr);
   margin:14px -18px 0;padding:15px 18px;
@@ -1038,7 +1044,30 @@ body.drag-lock,body.drag-lock *{-webkit-user-select:none !important;user-select:
       <div class="w-s">This is yours. Add your first exercise below, put in what you lift, and everything else fills itself in as you go.</div>
     </div>
     <div class="home-mini" id="homeMini"></div>
-    <div class="hp" id="homePanel">
+    <div class="today-plan" id="todayPlanCard" style="display:none;"></div>
+    <div class="day-eyebrow" id="dayEyebrow">Workout</div>
+    <input class="day-name" id="dayName" placeholder="Name this day — Push, Pull, Legs..." autocomplete="off" autocapitalize="words" spellcheck="false">
+    <div class="routine-chips" id="routineChips"></div>
+
+    <div id="exerciseList" style="margin-top:18px;"></div>
+
+    <div id="todayEmpty" class="empty" style="display:none;">
+      <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M6.5 6.5v11M17.5 6.5v11M4 9v6M20 9v6M6.5 12h11"/></svg></div>
+      <div class="lead">No exercises logged yet</div>
+      <div class="sub">Add your first lift to get started.</div>
+    </div>
+
+    <button class="add-ex" id="addExerciseBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+      Add Exercise
+    </button>
+    <button class="add-ex add-ss" id="addSupersetBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 7H5v10h3M16 7h3v10h-3M9 12h6"/></svg>
+      Add Superset
+    </button>
+
+    <!-- stats, calendar and records sit BELOW the workout controls (Stock: "I like seeing the exercises on top") -->
+    <div class="hp hp-below" id="homePanel">
 
       <div class="hp-strip">
         <div class="st"><div class="v" id="cgStreak">0</div><div class="k">Week streak</div></div>
@@ -1063,27 +1092,6 @@ body.drag-lock,body.drag-lock *{-webkit-user-select:none !important;user-select:
 
     </div>
 
-    <div class="today-plan" id="todayPlanCard" style="display:none;"></div>
-    <div class="day-eyebrow" id="dayEyebrow">Workout</div>
-    <input class="day-name" id="dayName" placeholder="Name this day — Push, Pull, Legs..." autocomplete="off" autocapitalize="words" spellcheck="false">
-    <div class="routine-chips" id="routineChips"></div>
-
-    <div id="exerciseList" style="margin-top:18px;"></div>
-
-    <div id="todayEmpty" class="empty" style="display:none;">
-      <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M6.5 6.5v11M17.5 6.5v11M4 9v6M20 9v6M6.5 12h11"/></svg></div>
-      <div class="lead">No exercises logged yet</div>
-      <div class="sub">Add your first lift to get started.</div>
-    </div>
-
-    <button class="add-ex" id="addExerciseBtn">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
-      Add Exercise
-    </button>
-    <button class="add-ex add-ss" id="addSupersetBtn">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 7H5v10h3M16 7h3v10h-3M9 12h6"/></svg>
-      Add Superset
-    </button>
 
     <div class="summary num" id="summary" style="display:none;">
       <div class="cellx"><div class="v" id="sVol">0<small>lb</small></div><div class="k">Volume</div></div>
@@ -1091,6 +1099,7 @@ body.drag-lock,body.drag-lock *{-webkit-user-select:none !important;user-select:
       <div class="cellx"><div class="v" id="sEx">0</div><div class="k">Exercises</div></div>
     </div>
 
+    <div id="finishBlock">
     <h2 class="h-sec">How did it feel?</h2>
     <div class="feel-row" id="feelRow">
       <div class="feel" data-feel="Strong"><span class="g">🔥</span><span class="t">Strong</span></div>
@@ -1112,6 +1121,7 @@ body.drag-lock,body.drag-lock *{-webkit-user-select:none !important;user-select:
 
     <button class="btn btn-primary" id="finishBtn" style="margin-top:16px;">Finish &amp; Save Workout</button>
     <button class="btn btn-ghost" id="discardBtn" style="margin-top:4px;">Discard this session</button>
+    </div>
   </section>
 
   <!-- ===================== HISTORY ===================== -->
@@ -1281,7 +1291,7 @@ const DISPLAY_NAME     = "Stock";
 const ATHLETE_KEY      = "Stock";       // backend identity (Stock himself)
 const DAD_NAME         = DISPLAY_NAME;  // legacy alias, display only
 /* ========================================================================== */
-const APP_VERSION = "2026.09.30a";
+const APP_VERSION = "2026.09.30c";
 /* Owner profile — unset. Never populate this in a public repo with real
    personal details; it ships in the page source. */
 const PROFILE = null;
@@ -1424,7 +1434,37 @@ function toast(msg){
 const TIMED_RE=/\b(run|runs|running|jog|jogging|sprint|sprints|treadmill|ruck|rucking)\b/i;
 function isTimedName(name){ return TIMED_RE.test(name||""); }
 function fmtMin(m){ m=num(m); return (Math.round(m*10)/10)+" min"; }
-function timedSetText(s,u){ return (num(s.weight)?num(s.weight)+" "+(u||unit)+" · ":"")+fmtMin(s.min); }
+function fmtMi(d){ return (Math.round(num(d)*100)/100)+" mi"; }
+/* minutes per mile; 0 when distance or time is missing */
+function paceOf(s){ const d=num(s.mi), m=num(s.min); return d>0&&m>0 ? m/d : 0; }
+function fmtPace(p){ const t=Math.round(p*60); return Math.floor(t/60)+":"+String(t%60).padStart(2,"0")+" /mi"; }
+function timedSetText(s,u){
+  const parts=[]; if(num(s.weight)) parts.push(num(s.weight)+" "+(u||unit)); if(num(s.mi)) parts.push(fmtMi(s.mi)); if(num(s.min)) parts.push(fmtMin(s.min));
+  const p=paceOf(s); return parts.join(" · ")+(p?" ("+fmtPace(p)+")":"");
+}
+function timedTotals(sets){ const mi=sets.reduce((t,s)=>t+num(s.mi),0), mn=sets.reduce((t,s)=>t+num(s.min),0);
+  return [mi?fmtMi(mi):"", mn?fmtMin(mn):""].filter(Boolean).join(" · "); }
+/* run records per name: best mile pace (time / distance), longest distance, heaviest weight */
+function runRecords(name){
+  const key=(name||"").trim().toLowerCase(); const r={pace:null,dist:null,weight:null};
+  loadWorkouts().forEach(w=>(w.exercises||[]).forEach(e=>{ if((e.name||"").trim().toLowerCase()!==key) return;
+    e.sets.forEach(s=>{ const p=paceOf(s);
+      if(p && (!r.pace || p<r.pace.v)) r.pace={v:p,set:s,date:w.date};
+      if(num(s.mi) && (!r.dist || num(s.mi)>r.dist.v)) r.dist={v:num(s.mi),set:s,date:w.date};
+      if(num(s.weight) && (!r.weight || num(s.weight)>r.weight.v)) r.weight={v:num(s.weight),set:s,date:w.date,unit:w.unit||unit};
+    }); }));
+  return r;
+}
+function checkRunPR(name,set){
+  const p=paceOf(set); if(!p) return;
+  const hist=runRecords(name).pace; if(!hist) return;          // first ever run: nothing to beat yet
+  const k="run:"+name.toLowerCase(), bar=Math.min(hist.v, sessionPRs[k]||Infinity);
+  if(p<bar){ sessionPRs[k]=p;
+    const b=document.getElementById("prbanner");
+    document.getElementById("prbannerText").textContent=name+" · "+fmtPace(p)+" ("+timedSetText(set).replace(/ \(.*\)$/,"")+")";
+    b.classList.add("show"); if(navigator.vibrate){ try{navigator.vibrate([60,40,60,40,120]);}catch(e){} }
+    clearTimeout(b._t); b._t=setTimeout(()=>b.classList.remove("show"),4200); }
+}
 function prevFor(name){
   const key=name.trim().toLowerCase();
   const all=loadWorkouts().slice().sort((a,b)=> b.date.localeCompare(a.date) || b.id.localeCompare(a.id));
@@ -1453,7 +1493,7 @@ function renderToday(){
   document.getElementById("summary").style.display=has?"grid":"none";
 
   // unfinished session from a previous visit (logged work, but the timer has idled off)
-  const hasWork = draft.exercises.some(e=>e.sets.some(s=>s.done || num(s.weight) || num(s.reps) || num(s.min)));
+  const hasWork = draft.exercises.some(e=>e.sets.some(s=>s.done || num(s.weight) || num(s.reps) || num(s.min) || num(s.mi)));
   if(hasWork && !draft.startedAt){
     const banner=document.createElement("div"); banner.className="resume";
     banner.innerHTML='<div class="resume-t">Unfinished workout</div>'+
@@ -1481,19 +1521,19 @@ function renderToday(){
 
     if(collapsed){
       const cvol=ex.sets.reduce((t,s)=>t+num(s.weight)*num(s.reps),0);
-      const timedC=isTimedName(ex.name), cmin=ex.sets.reduce((t,s)=>t+num(s.min),0);
+      const timedC=isTimedName(ex.name), ctot=timedTotals(ex.sets);
       const d=document.createElement("div"); d.className="ex-done";
       d.innerHTML='<span class="exd-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg></span>'+
         '<div class="exd-main"><div class="exd-name">'+escapeHtml(ex.name)+'</div>'+
         '<div class="exd-sub num">'+(timedC
-          ? ex.sets.length+' round'+(ex.sets.length!==1?'s':'')+(cmin?' · '+fmtMin(cmin):'')
+          ? ex.sets.length+' round'+(ex.sets.length!==1?'s':'')+(ctot?' · '+ctot:'')
           : ex.sets.length+' set'+(ex.sets.length!==1?'s':'')+(cvol?' · '+fmtVol(cvol)+' '+unit:''))+'</div></div>'+
         '<button class="exd-add">'+(timedC?'+ Round':'+ Set')+'</button>'+
         '<span class="exd-chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>';
       d.onclick=()=>{ ex.collapsed=false; saveDraft(); renderToday(); };
       d.querySelector(".exd-add").onclick=(e)=>{ e.stopPropagation();
         const last=ex.sets[ex.sets.length-1];
-        ex.sets.push(timedC ? { weight:last?last.weight:"", min:last?last.min:"", done:false } : { weight:last?last.weight:"", reps:last?last.reps:"", done:false });
+        ex.sets.push(timedC ? { weight:last?last.weight:"", mi:last?last.mi:"", min:last?last.min:"", done:false } : { weight:last?last.weight:"", reps:last?last.reps:"", done:false });
         ex.collapsed=false; markActivity(); saveDraft(); renderToday();
       };
       card.appendChild(d); list.appendChild(card); return;
@@ -1510,8 +1550,7 @@ function renderToday(){
     const timed=isTimedName(ex.name);
     const vol=document.createElement("div"); vol.className="ex-vol num";
     const evol=ex.sets.reduce((t,s)=>t+num(s.weight)*num(s.reps),0);
-    const emin=ex.sets.reduce((t,s)=>t+num(s.min),0);
-    vol.textContent = timed ? (emin?fmtMin(emin):"") : (evol? fmtVol(evol)+" "+unit : "");
+    vol.textContent = timed ? timedTotals(ex.sets) : (evol? fmtVol(evol)+" "+unit : "");
     const menu=document.createElement("button"); menu.className="ex-menu"; menu.setAttribute("aria-label","Remove exercise");
     menu.innerHTML='<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 7h14M10 11v5M14 11v5M6 7l1 12a1 1 0 001 1h8a1 1 0 001-1l1-12M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>';
     menu.onclick=()=>{ if(confirm("Remove "+ex.name+"?")){ draft.exercises.splice(ei,1);
@@ -1550,9 +1589,11 @@ function renderToday(){
       }
     }
 
-    const grid=document.createElement("div"); grid.className="set-grid";
+    const grid=document.createElement("div"); grid.className="set-grid"+(timed?" timed":"");
     const hd=document.createElement("div"); hd.className="set-hd";
-    hd.innerHTML="<span>"+(timed?"Round":"Set")+"</span><span>Previous</span><span>"+unit+"</span><span>"+(timed?"Min":"Reps")+"</span><span class='act-h'><i>Done</i><i>Rest</i></span>";
+    hd.innerHTML = timed
+      ? "<span>#</span><span>Previous</span><span>"+unit+"</span><span>Mi</span><span>Min</span><span>Done</span>"
+      : "<span>Set</span><span>Previous</span><span>"+unit+"</span><span>Reps</span><span class='act-h'><i>Done</i><i>Rest</i></span>";
     grid.appendChild(hd);
 
     ex.sets.forEach((s,si)=>{
@@ -1560,18 +1601,22 @@ function renderToday(){
       const idx=document.createElement("div"); idx.className="set-idx num"; idx.textContent=si+1;
       const p=document.createElement("div"); p.className="set-prev num";
       const pv=prev&&prev[si];
-      if(pv && timed){ p.innerHTML=(num(pv.weight)?"<b>"+num(pv.weight)+"</b> · ":"")+num(pv.min)+"m"; p.title="Tap to copy last time"; }
+      if(pv && timed){ p.innerHTML=(num(pv.mi)?"<b>"+num(pv.mi)+"</b>mi ":"")+(num(pv.min)?num(pv.min)+"m":""); p.title="Tap to copy last time"; }
       else if(pv){ p.innerHTML="<b>"+pv.weight+"</b> × "+pv.reps; p.title="Tap to copy last time"; }
       else p.textContent="—";
       const w=document.createElement("input"); w.className="cell num"; w.type="number"; w.inputMode="decimal"; w.min="0";
       w.value=s.weight; w.placeholder=pv?pv.weight:"0";
       w.oninput=()=>{ s.weight=w.value; markStart(); liveSummary(); vol.textContent=recalcVol(ex); };
       const r=document.createElement("input"); r.className="cell num"; r.type="number"; r.inputMode="numeric"; r.min="0";
+      let dI=null;
       if(timed){
-        r.inputMode="decimal"; r.step="0.5"; r.value=s.min||""; r.placeholder=pv?String(num(pv.min)):"0";
+        dI=document.createElement("input"); dI.className="cell num"; dI.type="number"; dI.inputMode="decimal"; dI.min="0"; dI.step="0.1";
+        dI.value=s.mi||""; dI.placeholder=pv&&num(pv.mi)?String(num(pv.mi)):"0"; dI.setAttribute("aria-label","Miles");
+        dI.oninput=()=>{ s.mi=dI.value; markStart(); vol.textContent=timedTotals(ex.sets); };
+        r.inputMode="decimal"; r.step="0.5"; r.value=s.min||""; r.placeholder=pv&&num(pv.min)?String(num(pv.min)):"0";
         r.setAttribute("aria-label","Minutes");
-        r.oninput=()=>{ s.min=r.value; markStart(); liveSummary(); const m=ex.sets.reduce((t,x)=>t+num(x.min),0); vol.textContent=m?fmtMin(m):""; };
-        if(pv) p.onclick=()=>{ s.weight=pv.weight; s.min=pv.min; saveDraft(); renderToday(); };
+        r.oninput=()=>{ s.min=r.value; markStart(); liveSummary(); vol.textContent=timedTotals(ex.sets); };
+        if(pv) p.onclick=()=>{ s.weight=pv.weight; s.mi=pv.mi; s.min=pv.min; saveDraft(); renderToday(); };
       } else {
       r.value=s.reps; r.placeholder=pv?pv.reps:((ex.plan&&planTargetReps(ex.plan.sets))||"0");
       r.oninput=()=>{ s.reps=r.value; markStart(); liveSummary(); vol.textContent=recalcVol(ex); };
@@ -1582,9 +1627,9 @@ function renderToday(){
       ck.onclick=()=>{
         if(!s.done){
           if(!num(s.weight) && w.placeholder) s.weight=w.placeholder;
-          if(timed){ if(!num(s.min) && r.placeholder) s.min=r.placeholder; }
+          if(timed){ if(!num(s.min) && num(r.placeholder)) s.min=r.placeholder; if(!num(s.mi) && dI && num(dI.placeholder)) s.mi=dI.placeholder; }
           else if(!num(s.reps) && r.placeholder) s.reps=r.placeholder;
-          s.done=true; if(navigator.vibrate){ try{navigator.vibrate(18);}catch(e){} } markStart(); if(!timed) checkPR(ex.name, s);
+          s.done=true; if(navigator.vibrate){ try{navigator.vibrate(18);}catch(e){} } markStart(); if(timed) checkRunPR(ex.name, s); else checkPR(ex.name, s);
         } else s.done=false;
         saveDraft(); renderToday();
       };
@@ -1592,8 +1637,10 @@ function renderToday(){
       const rb=document.createElement("button"); rb.className="rest-btn"; rb.setAttribute("aria-label","Start rest timer");
       rb.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2.5h6"/><path d="M12 2.5v2"/><circle cx="12" cy="13" r="7.5"/><path d="M12 9.5V13l2.5 1.5"/></svg>';
       rb.onclick=()=>{ markStart(); startRest(); };
-      const act=document.createElement("div"); act.className="set-act"; act.append(ck,rb);
-      row.append(idx,p,w,r,act); grid.appendChild(row);
+      const act=document.createElement("div"); act.className="set-act";
+      if(timed){ act.append(ck); row.append(idx,p,w,dI,r,act); }
+      else { act.append(ck,rb); row.append(idx,p,w,r,act); }
+      grid.appendChild(row);
     });
 
     const foot=document.createElement("div"); foot.className="set-foot";
@@ -1602,7 +1649,7 @@ function renderToday(){
     add.onclick=()=>{
       const last=ex.sets[ex.sets.length-1];
       const pv2=prev&&prev[ex.sets.length];
-      if(timed) ex.sets.push({ weight: last?last.weight:(pv2?pv2.weight:""), min: last?last.min:(pv2?pv2.min:""), done:false });
+      if(timed) ex.sets.push({ weight: last?last.weight:(pv2?pv2.weight:""), mi: last?last.mi:(pv2?pv2.mi:""), min: last?last.min:(pv2?pv2.min:""), done:false });
       else ex.sets.push({ weight: last?last.weight:(pv2?pv2.weight:""), reps: last?last.reps:(pv2?pv2.reps:""), done:false });
       markActivity(); saveDraft(); renderToday();
     };
@@ -1623,6 +1670,8 @@ function renderToday(){
     list.appendChild(card);
   });
 
+  const fb=document.getElementById("finishBlock");
+  if(fb) fb.style.display = (draft.exercises.length || draft.note || draft.feel) ? "" : "none";
   document.querySelectorAll(".feel").forEach(c=>c.classList.toggle("sel",c.dataset.feel===draft.feel));
   document.getElementById("feelNote").value=draft.note||"";
   const dn=document.getElementById("dayName"); if(dn && document.activeElement!==dn) dn.value=draft.name||"";
@@ -1773,7 +1822,7 @@ function confetti(){
 function finishWorkout(){
   const exercises=draft.exercises
     .map(e=>isTimedName(e.name)
-      ? ({ name:e.name, sets:e.sets.filter(s=>num(s.min)>0).map(s=>({weight:String(num(s.weight)),min:String(num(s.min))})) })
+      ? ({ name:e.name, sets:e.sets.filter(s=>num(s.min)>0||num(s.mi)>0).map(s=>({weight:String(num(s.weight)),mi:String(num(s.mi)),min:String(num(s.min))})) })
       : ({ name:e.name, sets:e.sets.filter(s=>num(s.reps)>0).map(s=>({weight:String(num(s.weight)),reps:String(num(s.reps))})) }))
     .filter(e=>e.sets.length>0);
   if(!exercises.length){ toast("Log at least one set first"); return; }
@@ -1874,9 +1923,12 @@ function openWorkoutEditor(w, det){
       rx.onclick=()=>{ if(confirm("Remove "+(x.name||"this lift")+" from this workout?")){ e.exercises.splice(xi,1); drawEx(); } };
       h.append(nm,rx); box.appendChild(h);
       const tm=isTimedName(x.name);
-      const cols=document.createElement("div"); cols.className="hed-cols"; cols.innerHTML='<span>'+(tm?'RND':'SET')+'</span><span>'+(e.unit||unit).toUpperCase()+'</span><span>'+(tm?'MIN':'REPS')+'</span><span></span>'; box.appendChild(cols);
+      const cols=document.createElement("div"); cols.className="hed-cols"+(tm?" t":"");
+      cols.innerHTML = tm ? '<span>#</span><span>'+(e.unit||unit).toUpperCase()+'</span><span>MI</span><span>MIN</span><span></span>'
+                          : '<span>SET</span><span>'+(e.unit||unit).toUpperCase()+'</span><span>REPS</span><span></span>';
+      box.appendChild(cols);
       x.sets.forEach((st,si)=>{
-        const r=document.createElement("div"); r.className="hed-set";
+        const r=document.createElement("div"); r.className="hed-set"+(tm?" t":"");
         const i=document.createElement("div"); i.className="i"; i.textContent=si+1;
         const wI=document.createElement("input"); wI.type="text"; wI.inputMode="decimal"; wI.value=st.weight; wI.oninput=()=>{ st.weight=wI.value; };
         const rI=document.createElement("input"); rI.type="text";
@@ -1884,11 +1936,13 @@ function openWorkoutEditor(w, det){
         else { rI.inputMode="numeric"; rI.value=st.reps; rI.oninput=()=>{ st.reps=rI.value; }; }
         const xs=document.createElement("button"); xs.type="button"; xs.className="hed-x"; xs.textContent="−"; xs.setAttribute("aria-label","Remove set");
         xs.onclick=()=>{ x.sets.splice(si,1); drawEx(); };
-        r.append(i,wI,rI,xs); box.appendChild(r);
+        if(tm){ const dI=document.createElement("input"); dI.type="text"; dI.inputMode="decimal"; dI.value=st.mi||""; dI.oninput=()=>{ st.mi=dI.value; }; r.append(i,wI,dI,rI,xs); }
+        else r.append(i,wI,rI,xs);
+        box.appendChild(r);
       });
       const add=document.createElement("button"); add.type="button"; add.className="hed-add"; add.textContent="+ Add set";
       add.textContent=tm?"+ Add round":"+ Add set";
-      add.onclick=()=>{ const last=x.sets[x.sets.length-1]; x.sets.push(tm?{weight:last?last.weight:"",min:last?last.min:""}:{weight:last?last.weight:"",reps:last?last.reps:""}); drawEx(); };
+      add.onclick=()=>{ const last=x.sets[x.sets.length-1]; x.sets.push(tm?{weight:last?last.weight:"",mi:last?last.mi:"",min:last?last.min:""}:{weight:last?last.weight:"",reps:last?last.reps:""}); drawEx(); };
       box.appendChild(add); exWrap.appendChild(box);
     });
   };
@@ -1905,7 +1959,7 @@ function openWorkoutEditor(w, det){
     const exercises=e.exercises
       .map(x=>{ const nm=(x.name||"").trim()||"Exercise";
         return isTimedName(nm)
-          ? { name:nm, sets:x.sets.filter(st=>num(st.min)>0).map(st=>({weight:String(num(st.weight)),min:String(num(st.min))})) }
+          ? { name:nm, sets:x.sets.filter(st=>num(st.min)>0||num(st.mi)>0).map(st=>({weight:String(num(st.weight)),mi:String(num(st.mi)),min:String(num(st.min))})) }
           : { name:nm, sets:x.sets.filter(st=>num(st.reps)>0).map(st=>({weight:String(num(st.weight)),reps:String(num(st.reps))})) }; })
       .filter(x=>x.sets.length>0);
     if(!exercises.length){ toast("Keep at least one set, or delete the workout"); return; }
@@ -2165,7 +2219,18 @@ function renderRecords(){
     });
   }));
   const keys=Object.keys(best).sort((a,b)=>best[b].e1-best[a].e1);
-  wrap.innerHTML=""; document.getElementById("recordsEmpty").style.display=keys.length?"none":"block";
+  const runNames=[...new Set(loadWorkouts().flatMap(w=>w.exercises.filter(e=>isTimedName(e.name)).map(e=>e.name.trim())))];
+  wrap.innerHTML=""; document.getElementById("recordsEmpty").style.display=(keys.length||runNames.length)?"none":"block";
+  runNames.forEach(nm=>{
+    const rr=runRecords(nm); if(!rr.pace && !rr.dist && !rr.weight) return;
+    const row=document.createElement("div"); row.className="pr";
+    const big = rr.pace ? fmtPace(rr.pace.v) : (rr.dist ? fmtMi(rr.dist.v) : rr.weight.v+" "+rr.weight.unit);
+    const bits=[]; if(rr.pace) bits.push("best mile pace"); if(rr.dist) bits.push(fmtMi(rr.dist.v)+" longest"); if(rr.weight) bits.push(rr.weight.v+" "+rr.weight.unit+" heaviest");
+    const when=(rr.pace||rr.dist||rr.weight).date;
+    row.innerHTML='<div><div class="nm">'+escapeHtml(nm)+'</div><div class="sub">'+shortDate(when)+'</div></div>'+
+      '<div class="r num"><div class="big">'+big+'</div><div class="e1">'+escapeHtml(bits.join(" · "))+'</div></div>';
+    wrap.appendChild(row);
+  });
   keys.forEach(k=>{
     const r=best[k];
     const row=document.createElement("div"); row.className="pr";
@@ -2428,7 +2493,7 @@ function rowEl(label,tag,create,value){
 }
 function addExercise(name){
   const clean=(name||"").trim(); if(!clean) return;
-  const ex={ name:clean, sets: isTimedName(clean) ? [{weight:"",min:"",done:false}] : [
+  const ex={ name:clean, sets: isTimedName(clean) ? [{weight:"",mi:"",min:"",done:false}] : [
     {weight:"",reps:"",done:false},
     {weight:"",reps:"",done:false},
     {weight:"",reps:"",done:false}
