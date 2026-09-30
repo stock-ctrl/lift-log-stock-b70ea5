@@ -1281,7 +1281,7 @@ const DISPLAY_NAME     = "Stock";
 const ATHLETE_KEY      = "Stock";       // backend identity (Stock himself)
 const DAD_NAME         = DISPLAY_NAME;  // legacy alias, display only
 /* ========================================================================== */
-const APP_VERSION = "2026.09.29b";
+const APP_VERSION = "2026.09.30a";
 /* Owner profile — unset. Never populate this in a public repo with real
    personal details; it ships in the page source. */
 const PROFILE = null;
@@ -1418,6 +1418,13 @@ function toast(msg){
 }
 
 /* previous performance per set-index for an exercise (most recent prior session) */
+/* ---- timed exercises: logged as rounds of (optional weight + minutes), not sets x reps.
+   Kept out of volume, records, PRs and progress charts. Add names here to extend
+   (cold plunge / sauna can join later with no muscle credit). ---- */
+const TIMED_RE=/\b(run|runs|running|jog|jogging|sprint|sprints|treadmill|ruck|rucking)\b/i;
+function isTimedName(name){ return TIMED_RE.test(name||""); }
+function fmtMin(m){ m=num(m); return (Math.round(m*10)/10)+" min"; }
+function timedSetText(s,u){ return (num(s.weight)?num(s.weight)+" "+(u||unit)+" · ":"")+fmtMin(s.min); }
 function prevFor(name){
   const key=name.trim().toLowerCase();
   const all=loadWorkouts().slice().sort((a,b)=> b.date.localeCompare(a.date) || b.id.localeCompare(a.id));
@@ -1446,7 +1453,7 @@ function renderToday(){
   document.getElementById("summary").style.display=has?"grid":"none";
 
   // unfinished session from a previous visit (logged work, but the timer has idled off)
-  const hasWork = draft.exercises.some(e=>e.sets.some(s=>s.done || num(s.weight) || num(s.reps)));
+  const hasWork = draft.exercises.some(e=>e.sets.some(s=>s.done || num(s.weight) || num(s.reps) || num(s.min)));
   if(hasWork && !draft.startedAt){
     const banner=document.createElement("div"); banner.className="resume";
     banner.innerHTML='<div class="resume-t">Unfinished workout</div>'+
@@ -1474,16 +1481,19 @@ function renderToday(){
 
     if(collapsed){
       const cvol=ex.sets.reduce((t,s)=>t+num(s.weight)*num(s.reps),0);
+      const timedC=isTimedName(ex.name), cmin=ex.sets.reduce((t,s)=>t+num(s.min),0);
       const d=document.createElement("div"); d.className="ex-done";
       d.innerHTML='<span class="exd-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg></span>'+
         '<div class="exd-main"><div class="exd-name">'+escapeHtml(ex.name)+'</div>'+
-        '<div class="exd-sub num">'+ex.sets.length+' set'+(ex.sets.length!==1?'s':'')+(cvol?' · '+fmtVol(cvol)+' '+unit:'')+'</div></div>'+
-        '<button class="exd-add">+ Set</button>'+
+        '<div class="exd-sub num">'+(timedC
+          ? ex.sets.length+' round'+(ex.sets.length!==1?'s':'')+(cmin?' · '+fmtMin(cmin):'')
+          : ex.sets.length+' set'+(ex.sets.length!==1?'s':'')+(cvol?' · '+fmtVol(cvol)+' '+unit:''))+'</div></div>'+
+        '<button class="exd-add">'+(timedC?'+ Round':'+ Set')+'</button>'+
         '<span class="exd-chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>';
       d.onclick=()=>{ ex.collapsed=false; saveDraft(); renderToday(); };
       d.querySelector(".exd-add").onclick=(e)=>{ e.stopPropagation();
         const last=ex.sets[ex.sets.length-1];
-        ex.sets.push({ weight:last?last.weight:"", reps:last?last.reps:"", done:false });
+        ex.sets.push(timedC ? { weight:last?last.weight:"", min:last?last.min:"", done:false } : { weight:last?last.weight:"", reps:last?last.reps:"", done:false });
         ex.collapsed=false; markActivity(); saveDraft(); renderToday();
       };
       card.appendChild(d); list.appendChild(card); return;
@@ -1497,9 +1507,11 @@ function renderToday(){
     nameI.oninput=growName;
     nameI.onchange=()=>{ ex.name=nameI.value.trim()||"Exercise"; saveDraft(); renderToday(); };
     requestAnimationFrame(growName);
+    const timed=isTimedName(ex.name);
     const vol=document.createElement("div"); vol.className="ex-vol num";
     const evol=ex.sets.reduce((t,s)=>t+num(s.weight)*num(s.reps),0);
-    vol.textContent = evol? fmtVol(evol)+" "+unit : "";
+    const emin=ex.sets.reduce((t,s)=>t+num(s.min),0);
+    vol.textContent = timed ? (emin?fmtMin(emin):"") : (evol? fmtVol(evol)+" "+unit : "");
     const menu=document.createElement("button"); menu.className="ex-menu"; menu.setAttribute("aria-label","Remove exercise");
     menu.innerHTML='<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 7h14M10 11v5M14 11v5M6 7l1 12a1 1 0 001 1h8a1 1 0 001-1l1-12M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>';
     menu.onclick=()=>{ if(confirm("Remove "+ex.name+"?")){ draft.exercises.splice(ei,1);
@@ -1523,7 +1535,7 @@ function renderToday(){
     }
 
     // progressive-overload nudge: remind him what he did last time and offer a bump
-    if(prev && prev.length){
+    if(prev && prev.length && !timed){
       let top=prev[0]; prev.forEach(s=>{ if(num(s.weight)>num(top.weight)) top=s; });
       const inc = unit==="kg"?2.5:5;
       const sugg = Math.round((num(top.weight)+inc)*10)/10;
@@ -1540,7 +1552,7 @@ function renderToday(){
 
     const grid=document.createElement("div"); grid.className="set-grid";
     const hd=document.createElement("div"); hd.className="set-hd";
-    hd.innerHTML="<span>Set</span><span>Previous</span><span>"+unit+"</span><span>Reps</span><span class='act-h'><i>Done</i><i>Rest</i></span>";
+    hd.innerHTML="<span>"+(timed?"Round":"Set")+"</span><span>Previous</span><span>"+unit+"</span><span>"+(timed?"Min":"Reps")+"</span><span class='act-h'><i>Done</i><i>Rest</i></span>";
     grid.appendChild(hd);
 
     ex.sets.forEach((s,si)=>{
@@ -1548,22 +1560,31 @@ function renderToday(){
       const idx=document.createElement("div"); idx.className="set-idx num"; idx.textContent=si+1;
       const p=document.createElement("div"); p.className="set-prev num";
       const pv=prev&&prev[si];
-      if(pv){ p.innerHTML="<b>"+pv.weight+"</b> × "+pv.reps; p.title="Tap to copy last time"; }
+      if(pv && timed){ p.innerHTML=(num(pv.weight)?"<b>"+num(pv.weight)+"</b> · ":"")+num(pv.min)+"m"; p.title="Tap to copy last time"; }
+      else if(pv){ p.innerHTML="<b>"+pv.weight+"</b> × "+pv.reps; p.title="Tap to copy last time"; }
       else p.textContent="—";
       const w=document.createElement("input"); w.className="cell num"; w.type="number"; w.inputMode="decimal"; w.min="0";
       w.value=s.weight; w.placeholder=pv?pv.weight:"0";
       w.oninput=()=>{ s.weight=w.value; markStart(); liveSummary(); vol.textContent=recalcVol(ex); };
       const r=document.createElement("input"); r.className="cell num"; r.type="number"; r.inputMode="numeric"; r.min="0";
+      if(timed){
+        r.inputMode="decimal"; r.step="0.5"; r.value=s.min||""; r.placeholder=pv?String(num(pv.min)):"0";
+        r.setAttribute("aria-label","Minutes");
+        r.oninput=()=>{ s.min=r.value; markStart(); liveSummary(); const m=ex.sets.reduce((t,x)=>t+num(x.min),0); vol.textContent=m?fmtMin(m):""; };
+        if(pv) p.onclick=()=>{ s.weight=pv.weight; s.min=pv.min; saveDraft(); renderToday(); };
+      } else {
       r.value=s.reps; r.placeholder=pv?pv.reps:((ex.plan&&planTargetReps(ex.plan.sets))||"0");
       r.oninput=()=>{ s.reps=r.value; markStart(); liveSummary(); vol.textContent=recalcVol(ex); };
       if(pv) p.onclick=()=>{ s.weight=pv.weight; s.reps=pv.reps; saveDraft(); renderToday(); };
+      }
       const ck=document.createElement("button"); ck.className="check"; ck.setAttribute("aria-label","Complete set");
       ck.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>';
       ck.onclick=()=>{
         if(!s.done){
           if(!num(s.weight) && w.placeholder) s.weight=w.placeholder;
-          if(!num(s.reps) && r.placeholder) s.reps=r.placeholder;
-          s.done=true; if(navigator.vibrate){ try{navigator.vibrate(18);}catch(e){} } markStart(); checkPR(ex.name, s);
+          if(timed){ if(!num(s.min) && r.placeholder) s.min=r.placeholder; }
+          else if(!num(s.reps) && r.placeholder) s.reps=r.placeholder;
+          s.done=true; if(navigator.vibrate){ try{navigator.vibrate(18);}catch(e){} } markStart(); if(!timed) checkPR(ex.name, s);
         } else s.done=false;
         saveDraft(); renderToday();
       };
@@ -1577,11 +1598,12 @@ function renderToday(){
 
     const foot=document.createElement("div"); foot.className="set-foot";
     const add=document.createElement("button"); add.className="add-set";
-    add.innerHTML='<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg> Add set';
+    add.innerHTML='<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg> '+(timed?'Add round':'Add set');
     add.onclick=()=>{
       const last=ex.sets[ex.sets.length-1];
       const pv2=prev&&prev[ex.sets.length];
-      ex.sets.push({ weight: last?last.weight:(pv2?pv2.weight:""), reps: last?last.reps:(pv2?pv2.reps:""), done:false });
+      if(timed) ex.sets.push({ weight: last?last.weight:(pv2?pv2.weight:""), min: last?last.min:(pv2?pv2.min:""), done:false });
+      else ex.sets.push({ weight: last?last.weight:(pv2?pv2.weight:""), reps: last?last.reps:(pv2?pv2.reps:""), done:false });
       markActivity(); saveDraft(); renderToday();
     };
     foot.appendChild(add);
@@ -1750,7 +1772,9 @@ function confetti(){
 /* ---------- finish ---------- */
 function finishWorkout(){
   const exercises=draft.exercises
-    .map(e=>({ name:e.name, sets:e.sets.filter(s=>num(s.reps)>0).map(s=>({weight:String(num(s.weight)),reps:String(num(s.reps))})) }))
+    .map(e=>isTimedName(e.name)
+      ? ({ name:e.name, sets:e.sets.filter(s=>num(s.min)>0).map(s=>({weight:String(num(s.weight)),min:String(num(s.min))})) })
+      : ({ name:e.name, sets:e.sets.filter(s=>num(s.reps)>0).map(s=>({weight:String(num(s.weight)),reps:String(num(s.reps))})) }))
     .filter(e=>e.sets.length>0);
   if(!exercises.length){ toast("Log at least one set first"); return; }
   let dur=null; if(draft.startedAt) dur=Math.min(5*3600,Math.max(60,Math.floor(workoutElapsedMs()/1000)));   // excludes paused time
@@ -1799,7 +1823,7 @@ function renderHistory(){
     const det=document.createElement("div"); det.className="h-detail";
     w.exercises.forEach(e=>{
       const he=document.createElement("div"); he.className="h-ex";
-      const sets=e.sets.map(s=>'<span>'+num(s.weight)+'×'+num(s.reps)+'</span>').join("");
+      const sets=isTimedName(e.name) ? e.sets.map(s=>'<span>'+timedSetText(s,u)+'</span>').join("") : e.sets.map(s=>'<span>'+num(s.weight)+'×'+num(s.reps)+'</span>').join("");
       he.innerHTML='<div class="nm">'+escapeHtml(e.name)+'</div><div class="st num">'+sets+'</div>';
       det.appendChild(he);
     });
@@ -1849,18 +1873,22 @@ function openWorkoutEditor(w, det){
       const rx=document.createElement("button"); rx.type="button"; rx.className="hed-x"; rx.textContent="✕"; rx.setAttribute("aria-label","Remove lift");
       rx.onclick=()=>{ if(confirm("Remove "+(x.name||"this lift")+" from this workout?")){ e.exercises.splice(xi,1); drawEx(); } };
       h.append(nm,rx); box.appendChild(h);
-      const cols=document.createElement("div"); cols.className="hed-cols"; cols.innerHTML='<span>SET</span><span>'+(e.unit||unit).toUpperCase()+'</span><span>REPS</span><span></span>'; box.appendChild(cols);
+      const tm=isTimedName(x.name);
+      const cols=document.createElement("div"); cols.className="hed-cols"; cols.innerHTML='<span>'+(tm?'RND':'SET')+'</span><span>'+(e.unit||unit).toUpperCase()+'</span><span>'+(tm?'MIN':'REPS')+'</span><span></span>'; box.appendChild(cols);
       x.sets.forEach((st,si)=>{
         const r=document.createElement("div"); r.className="hed-set";
         const i=document.createElement("div"); i.className="i"; i.textContent=si+1;
         const wI=document.createElement("input"); wI.type="text"; wI.inputMode="decimal"; wI.value=st.weight; wI.oninput=()=>{ st.weight=wI.value; };
-        const rI=document.createElement("input"); rI.type="text"; rI.inputMode="numeric"; rI.value=st.reps; rI.oninput=()=>{ st.reps=rI.value; };
+        const rI=document.createElement("input"); rI.type="text";
+        if(tm){ rI.inputMode="decimal"; rI.value=st.min||""; rI.oninput=()=>{ st.min=rI.value; }; }
+        else { rI.inputMode="numeric"; rI.value=st.reps; rI.oninput=()=>{ st.reps=rI.value; }; }
         const xs=document.createElement("button"); xs.type="button"; xs.className="hed-x"; xs.textContent="−"; xs.setAttribute("aria-label","Remove set");
         xs.onclick=()=>{ x.sets.splice(si,1); drawEx(); };
         r.append(i,wI,rI,xs); box.appendChild(r);
       });
       const add=document.createElement("button"); add.type="button"; add.className="hed-add"; add.textContent="+ Add set";
-      add.onclick=()=>{ const last=x.sets[x.sets.length-1]; x.sets.push({weight:last?last.weight:"",reps:last?last.reps:""}); drawEx(); };
+      add.textContent=tm?"+ Add round":"+ Add set";
+      add.onclick=()=>{ const last=x.sets[x.sets.length-1]; x.sets.push(tm?{weight:last?last.weight:"",min:last?last.min:""}:{weight:last?last.weight:"",reps:last?last.reps:""}); drawEx(); };
       box.appendChild(add); exWrap.appendChild(box);
     });
   };
@@ -1875,7 +1903,10 @@ function openWorkoutEditor(w, det){
     const hh=Math.max(0,Math.min(5,Math.floor(num(ed.querySelector(".hed-h").value))));
     const mm=Math.max(0,Math.min(59,Math.floor(num(ed.querySelector(".hed-m").value))));
     const exercises=e.exercises
-      .map(x=>({ name:(x.name||"").trim()||"Exercise", sets:x.sets.filter(st=>num(st.reps)>0).map(st=>({weight:String(num(st.weight)),reps:String(num(st.reps))})) }))
+      .map(x=>{ const nm=(x.name||"").trim()||"Exercise";
+        return isTimedName(nm)
+          ? { name:nm, sets:x.sets.filter(st=>num(st.min)>0).map(st=>({weight:String(num(st.weight)),min:String(num(st.min))})) }
+          : { name:nm, sets:x.sets.filter(st=>num(st.reps)>0).map(st=>({weight:String(num(st.weight)),reps:String(num(st.reps))})) }; })
       .filter(x=>x.sets.length>0);
     if(!exercises.length){ toast("Keep at least one set, or delete the workout"); return; }
     const all=loadWorkouts(); const k=all.findIndex(x=>x.id===w.id);
@@ -2039,7 +2070,7 @@ function renderMovers(){
   const ws=loadWorkouts();
   if(!ws.length){ card.innerHTML='<div class="mv-empty">Your progress shows up here as you train. Log a lift on two different days and watch it climb.</div>'; return; }
   const latestDate=ws.reduce((m,w)=> w.date>m?w.date:m, "");
-  const names=new Set(); ws.forEach(w=>w.exercises.forEach(e=>names.add(e.name.trim())));
+  const names=new Set(); ws.forEach(w=>w.exercises.forEach(e=>{ if(!isTimedName(e.name)) names.add(e.name.trim()); }));
   const movers=[]; let prCount=0;
   names.forEach(nm=>{
     const s=exerciseSeries(nm);
@@ -2126,7 +2157,7 @@ function renderRecords(){
   const wrap=document.getElementById("recordsList");
   const best={};
   loadWorkouts().forEach(w=>w.exercises.forEach(e=>{
-    const k=e.name.trim();
+    const k=e.name.trim(); if(isTimedName(k)) return;
     e.sets.forEach(s=>{
       const e1=epley(s.weight,s.reps), wt=num(s.weight);
       if(!best[k] || e1>best[k].e1 || (e1===best[k].e1 && wt>best[k].weight))
@@ -2397,7 +2428,7 @@ function rowEl(label,tag,create,value){
 }
 function addExercise(name){
   const clean=(name||"").trim(); if(!clean) return;
-  const ex={ name:clean, sets:[
+  const ex={ name:clean, sets: isTimedName(clean) ? [{weight:"",min:"",done:false}] : [
     {weight:"",reps:"",done:false},
     {weight:"",reps:"",done:false},
     {weight:"",reps:"",done:false}
@@ -3085,7 +3116,7 @@ function renderPBs(ws){
   const list = document.getElementById("pbList"); if(!list) return;
   const best = {};
   ws.forEach(w => (w.exercises||[]).forEach(e => {
-    const k = (e.name||"").trim(); if(!k) return;
+    const k = (e.name||"").trim(); if(!k || isTimedName(k)) return;
     (e.sets||[]).forEach(s => {
       const e1 = epley(s.weight, s.reps), wt = num(s.weight);
       if(!best[k] || e1 > best[k].e1 || (e1===best[k].e1 && wt > best[k].weight))
@@ -3207,6 +3238,7 @@ function renderHome(){
 const EX_RULES = [
   // Specific variants first; the general pattern for each family comes after.
   [/tibialis/i,                                                 [], []],   // front of shin: no region on the map
+  [TIMED_RE,                                                    [], ["quads","hamstrings","glutes","calves"]],   // runs: half a set per round
   [/dip bar|tricep dip/i,                                       ["triceps"], ["chest","front_delts"]],
   [/tricep|skull ?crusher|pushdown|tate press|french press/i,   ["triceps"], []],
   [/(db|dumbbell)\s+kickback/i,                                 ["triceps"], []],
