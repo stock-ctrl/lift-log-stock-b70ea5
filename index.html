@@ -197,6 +197,7 @@ input,textarea{font-family:inherit;}
 /* timed (run) rows: # | previous | lb | mi | min | done - no rest button */
 .set-grid.timed .set-hd,.set-grid.timed .set-row{grid-template-columns:22px minmax(0,1fr) 50px 48px 50px 44px;gap:5px;}
 .set-grid.timed .set-act{justify-content:center;}
+.cell.cell-time{font-size:15px;letter-spacing:-.01em;}
 .set-grid.timed.sauna .set-hd,.set-grid.timed.sauna .set-row{grid-template-columns:22px minmax(0,1fr) 72px 44px;}
 @media (max-width:360px){.set-grid.timed:not(.sauna) .set-hd,.set-grid.timed:not(.sauna) .set-row{grid-template-columns:18px minmax(0,1fr) 44px 42px 44px 40px;gap:4px;}}
 .set-hd span{font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);text-align:center;}
@@ -379,6 +380,9 @@ input,textarea{font-family:inherit;}
 .hed-add{background:none;border:1px dashed var(--line-2);border-radius:9px;color:var(--ink-2);font-size:13px;font-weight:700;padding:8px;width:100%;cursor:pointer;font-family:inherit;}
 .hed-set.t,.hed-cols.t{grid-template-columns:24px 1fr 1fr 1fr 34px;}
 .hed-set.s,.hed-cols.s{grid-template-columns:24px 1fr 34px;}
+.hed-addlift{display:flex;gap:8px;}
+.hed-addlift input{flex:1;min-width:0;}
+.hed-addbtn{flex-shrink:0;padding:0 18px;border-radius:10px;border:1px solid var(--line-2);background:var(--card);color:var(--ink);font-size:15px;font-weight:750;cursor:pointer;font-family:inherit;}
 .hed-cols{display:grid;grid-template-columns:22px 1fr 1fr 34px;gap:6px;font-size:10px;font-weight:800;letter-spacing:.12em;color:var(--faint);text-align:center;margin-bottom:4px;}
 .hed-btns{display:flex;gap:10px;}
 .hed-btns button{flex:1;padding:12px;border-radius:11px;font-size:15px;font-weight:750;cursor:pointer;font-family:inherit;}
@@ -1293,7 +1297,7 @@ const DISPLAY_NAME     = "Stock";
 const ATHLETE_KEY      = "Stock";       // backend identity (Stock himself)
 const DAD_NAME         = DISPLAY_NAME;  // legacy alias, display only
 /* ========================================================================== */
-const APP_VERSION = "2026.09.30f";
+const APP_VERSION = "2026.09.30g";
 /* Owner profile — unset. Never populate this in a public repo with real
    personal details; it ships in the page source. */
 const PROFILE = null;
@@ -1439,16 +1443,35 @@ function isSaunaName(name){ return SAUNA_RE.test(name||""); }
 function isRunName(name){ return TIMED_RE.test(name||""); }
 function isTimedName(name){ return isRunName(name) || isSaunaName(name); }
 function fmtMin(m){ m=num(m); return (Math.round(m*10)/10)+" min"; }
+/* Run times. The iPhone number pad has "." but no ":", so "10.30" means 10:30,
+   "1030" means 10:30 and "10" means 10 minutes. One digit after the dot is
+   tens of seconds ("10.3" = 10:30). Stored as decimal minutes (10:30 -> 10.5). */
+function parseTime(str){
+  str=String(str||"").trim(); if(!str) return 0;
+  let m=0, sec=0; const mm=str.match(/^(\d*)[.:,](\d{0,2})$/);
+  if(mm){ m=+mm[1]||0; sec=mm[2] ? (mm[2].length===1 ? +mm[2]*10 : +mm[2]) : 0; }
+  else { const d=str.replace(/\D/g,""); if(!d) return 0;
+    if(d.length<=2){ m=+d; } else { m=+d.slice(0,-2); sec=+d.slice(-2); } }
+  return m+Math.min(59,sec)/60;
+}
+function fmtTime(min){ const t=Math.round(num(min)*60); return Math.floor(t/60)+":"+String(t%60).padStart(2,"0"); }
+function wireTimeInput(inp, get, set, after){
+  inp.type="text"; inp.inputMode="decimal"; inp.autocomplete="off";
+  inp.value = num(get()) ? fmtTime(get()) : "";
+  inp.oninput=()=>{ set(String(Math.round(parseTime(inp.value)*1e4)/1e4)); if(after) after(); };
+  inp.onchange=()=>{ inp.value = num(get()) ? fmtTime(get()) : ""; };
+}
 function fmtMi(d){ return (Math.round(num(d)*100)/100)+" mi"; }
 /* minutes per mile; 0 when distance or time is missing */
 function paceOf(s){ const d=num(s.mi), m=num(s.min); return d>0&&m>0 ? m/d : 0; }
 function fmtPace(p){ const t=Math.round(p*60); return Math.floor(t/60)+":"+String(t%60).padStart(2,"0")+" /mi"; }
 function timedSetText(s,u){
-  const parts=[]; if(num(s.weight)) parts.push(num(s.weight)+" "+(u||unit)); if(num(s.mi)) parts.push(fmtMi(s.mi)); if(num(s.min)) parts.push(fmtMin(s.min));
+  const parts=[]; if(num(s.weight)) parts.push(num(s.weight)+" "+(u||unit)); if(num(s.mi)) parts.push(fmtMi(s.mi));
+  if(num(s.min)) parts.push(num(s.mi)||num(s.weight) ? fmtTime(s.min) : fmtMin(s.min));   // runs read as 10:30, sauna as 15 min
   const p=paceOf(s); return parts.join(" · ")+(p?" ("+fmtPace(p)+")":"");
 }
 function timedTotals(sets){ const mi=sets.reduce((t,s)=>t+num(s.mi),0), mn=sets.reduce((t,s)=>t+num(s.min),0);
-  return [mi?fmtMi(mi):"", mn?fmtMin(mn):""].filter(Boolean).join(" · "); }
+  return [mi?fmtMi(mi):"", mn?(mi?fmtTime(mn):fmtMin(mn)):""].filter(Boolean).join(" · "); }
 /* run records per name: best mile pace (time / distance), longest distance, heaviest weight */
 function runRecords(name){
   const key=(name||"").trim().toLowerCase(); const r={pace:null,dist:null,weight:null};
@@ -1599,7 +1622,7 @@ function renderToday(){
     hd.innerHTML = sauna
       ? "<span>#</span><span>Previous</span><span>Min</span><span>Done</span>"
       : timed
-      ? "<span>#</span><span>Previous</span><span>"+unit+"</span><span>Mi</span><span>Min</span><span>Done</span>"
+      ? "<span>#</span><span>Previous</span><span>"+unit+"</span><span>Mi</span><span>Time</span><span>Done</span>"
       : "<span>Set</span><span>Previous</span><span>"+unit+"</span><span>Reps</span><span class='act-h'><i>Done</i><i>Rest</i></span>";
     grid.appendChild(hd);
 
@@ -1608,7 +1631,7 @@ function renderToday(){
       const idx=document.createElement("div"); idx.className="set-idx num"; idx.textContent=si+1;
       const p=document.createElement("div"); p.className="set-prev num";
       const pv=prev&&prev[si];
-      if(pv && timed){ p.innerHTML=(num(pv.mi)?"<b>"+num(pv.mi)+"</b>mi ":"")+(num(pv.min)?num(pv.min)+"m":""); p.title="Tap to copy last time"; }
+      if(pv && timed){ p.innerHTML=(num(pv.mi)?"<b>"+num(pv.mi)+"</b>mi ":"")+(num(pv.min)?(sauna?num(pv.min)+"m":fmtTime(pv.min)):""); p.title="Tap to copy last time"; }
       else if(pv){ p.innerHTML="<b>"+pv.weight+"</b> × "+pv.reps; p.title="Tap to copy last time"; }
       else p.textContent="—";
       const w=document.createElement("input"); w.className="cell num"; w.type="number"; w.inputMode="decimal"; w.min="0";
@@ -1620,9 +1643,15 @@ function renderToday(){
         dI=document.createElement("input"); dI.className="cell num"; dI.type="number"; dI.inputMode="decimal"; dI.min="0"; dI.step="0.1";
         dI.value=s.mi||""; dI.placeholder=pv&&num(pv.mi)?String(num(pv.mi)):"0"; dI.setAttribute("aria-label","Miles");
         dI.oninput=()=>{ s.mi=dI.value; markStart(); vol.textContent=timedTotals(ex.sets); };
-        r.inputMode="decimal"; r.step="0.5"; r.value=s.min||""; r.placeholder=pv&&num(pv.min)?String(num(pv.min)):"0";
-        r.setAttribute("aria-label","Minutes");
-        r.oninput=()=>{ s.min=r.value; markStart(); liveSummary(); vol.textContent=timedTotals(ex.sets); };
+        if(sauna){
+          r.inputMode="decimal"; r.step="0.5"; r.value=s.min||""; r.placeholder=pv&&num(pv.min)?String(num(pv.min)):"0";
+          r.setAttribute("aria-label","Minutes");
+          r.oninput=()=>{ s.min=r.value; markStart(); liveSummary(); vol.textContent=timedTotals(ex.sets); };
+        } else {
+          wireTimeInput(r, ()=>s.min, v=>{ s.min=v; }, ()=>{ markStart(); liveSummary(); vol.textContent=timedTotals(ex.sets); });
+          r.placeholder=pv&&num(pv.min)?fmtTime(pv.min):"mm.ss"; r.setAttribute("aria-label","Time, minutes.seconds");
+          r.classList.add("cell-time");
+        }
         if(pv) p.onclick=()=>{ s.weight=pv.weight; s.mi=pv.mi; s.min=pv.min; saveDraft(); renderToday(); };
       } else {
       r.value=s.reps; r.placeholder=pv?pv.reps:((ex.plan&&planTargetReps(ex.plan.sets))||"0");
@@ -1634,7 +1663,7 @@ function renderToday(){
       ck.onclick=()=>{
         if(!s.done){
           if(!num(s.weight) && w.placeholder) s.weight=w.placeholder;
-          if(timed){ if(!num(s.min) && num(r.placeholder)) s.min=r.placeholder; if(!num(s.mi) && dI && num(dI.placeholder)) s.mi=dI.placeholder; }
+          if(timed){ if(!num(s.min) && pv && num(pv.min)) s.min=pv.min; if(!num(s.mi) && dI && num(dI.placeholder)) s.mi=dI.placeholder; }
           else if(!num(s.reps) && r.placeholder) s.reps=r.placeholder;
           s.done=true; if(navigator.vibrate){ try{navigator.vibrate(18);}catch(e){} } markStart(); if(timed) checkRunPR(ex.name, s); else checkPR(ex.name, s);
         } else s.done=false;
@@ -1913,6 +1942,8 @@ function openWorkoutEditor(w, det){
     '<div><label>Length</label><div class="hed-dur"><input type="number" inputmode="numeric" min="0" max="5" class="hed-h"><span>hr</span>'+
     '<input type="number" inputmode="numeric" min="0" max="59" class="hed-m"><span>min</span></div></div>'+
     '<div class="hed-exs"></div>'+
+    '<div class="hed-addlift"><input class="hed-newlift" list="hedLiftNames" placeholder="Add a lift (Sauna, Weighted Run…)" autocapitalize="words"><button type="button" class="hed-addbtn">Add</button>'+
+    '<datalist id="hedLiftNames"></datalist></div>'+
     '<div><label>Note</label><textarea class="hed-note" rows="2"></textarea></div>'+
     '<div class="hed-btns"><button class="hed-cancel" type="button">Cancel</button><button class="hed-save" type="button">Save</button></div>';
   ed.querySelector(".hed-name").value=e.name||"";
@@ -1933,7 +1964,7 @@ function openWorkoutEditor(w, det){
       const tm=isTimedName(x.name);
       const cols=document.createElement("div"); cols.className="hed-cols"+(tm?" t":"");
       const sa=isSaunaName(x.name); if(sa) cols.className="hed-cols s";
-      cols.innerHTML = sa ? '<span>#</span><span>MIN</span><span></span>' : tm ? '<span>#</span><span>'+(e.unit||unit).toUpperCase()+'</span><span>MI</span><span>MIN</span><span></span>'
+      cols.innerHTML = sa ? '<span>#</span><span>MIN</span><span></span>' : tm ? '<span>#</span><span>'+(e.unit||unit).toUpperCase()+'</span><span>MI</span><span>TIME</span><span></span>'
                           : '<span>SET</span><span>'+(e.unit||unit).toUpperCase()+'</span><span>REPS</span><span></span>';
       box.appendChild(cols);
       x.sets.forEach((st,si)=>{
@@ -1941,7 +1972,8 @@ function openWorkoutEditor(w, det){
         const i=document.createElement("div"); i.className="i"; i.textContent=si+1;
         const wI=document.createElement("input"); wI.type="text"; wI.inputMode="decimal"; wI.value=st.weight; wI.oninput=()=>{ st.weight=wI.value; };
         const rI=document.createElement("input"); rI.type="text";
-        if(tm){ rI.inputMode="decimal"; rI.value=st.min||""; rI.oninput=()=>{ st.min=rI.value; }; }
+        if(tm && !isSaunaName(x.name)){ wireTimeInput(rI, ()=>st.min, v=>{ st.min=v; }); rI.placeholder="mm.ss"; }
+        else if(tm){ rI.inputMode="decimal"; rI.value=st.min||""; rI.oninput=()=>{ st.min=rI.value; }; }
         else { rI.inputMode="numeric"; rI.value=st.reps; rI.oninput=()=>{ st.reps=rI.value; }; }
         const xs=document.createElement("button"); xs.type="button"; xs.className="hed-x"; xs.textContent="−"; xs.setAttribute("aria-label","Remove set");
         xs.onclick=()=>{ x.sets.splice(si,1); drawEx(); };
@@ -1957,6 +1989,15 @@ function openWorkoutEditor(w, det){
     });
   };
   drawEx();
+  // add a lift that was missed (e.g. the sauna after the workout)
+  const dl=ed.querySelector("#hedLiftNames"); [...allNames().keys()].sort().forEach(nm=>{ const o=document.createElement("option"); o.value=nm; dl.appendChild(o); });
+  const newI=ed.querySelector(".hed-newlift");
+  ed.querySelector(".hed-addbtn").onclick=()=>{
+    const nm=(newI.value||"").trim(); if(!nm){ newI.focus(); return; }
+    e.exercises.push({ name:nm, sets:[ isSaunaName(nm) ? {min:""} : isTimedName(nm) ? {weight:"",mi:"",min:""} : {weight:"",reps:""} ] });
+    newI.value=""; drawEx();
+    const boxes=exWrap.querySelectorAll(".hed-ex"); const last=boxes[boxes.length-1]; if(last){ const f=last.querySelector(".hed-set input"); if(f) f.focus(); }
+  };
   const kids=[...det.children]; kids.forEach(k=>k.style.display="none");
   det.appendChild(ed); det.classList.add("open");
   const close=()=>{ ed.remove(); kids.forEach(k=>k.style.display=""); };
