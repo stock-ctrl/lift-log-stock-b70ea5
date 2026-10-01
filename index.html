@@ -197,7 +197,8 @@ input,textarea{font-family:inherit;}
 /* timed (run) rows: # | previous | lb | mi | min | done - no rest button */
 .set-grid.timed .set-hd,.set-grid.timed .set-row{grid-template-columns:22px minmax(0,1fr) 50px 48px 50px 44px;gap:5px;}
 .set-grid.timed .set-act{justify-content:center;}
-@media (max-width:360px){.set-grid.timed .set-hd,.set-grid.timed .set-row{grid-template-columns:18px minmax(0,1fr) 44px 42px 44px 40px;gap:4px;}}
+.set-grid.timed.sauna .set-hd,.set-grid.timed.sauna .set-row{grid-template-columns:22px minmax(0,1fr) 72px 44px;}
+@media (max-width:360px){.set-grid.timed:not(.sauna) .set-hd,.set-grid.timed:not(.sauna) .set-row{grid-template-columns:18px minmax(0,1fr) 44px 42px 44px 40px;gap:4px;}}
 .set-hd span{font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);text-align:center;}
 .set-hd span:nth-child(1){text-align:center;}
 .set-hd span:nth-child(2){text-align:left;padding-left:4px;}
@@ -377,6 +378,7 @@ input,textarea{font-family:inherit;}
 .hed-x{width:34px;height:34px;border-radius:9px;border:1px solid var(--line-2);background:none;color:var(--muted);font-size:15px;cursor:pointer;flex-shrink:0;}
 .hed-add{background:none;border:1px dashed var(--line-2);border-radius:9px;color:var(--ink-2);font-size:13px;font-weight:700;padding:8px;width:100%;cursor:pointer;font-family:inherit;}
 .hed-set.t,.hed-cols.t{grid-template-columns:24px 1fr 1fr 1fr 34px;}
+.hed-set.s,.hed-cols.s{grid-template-columns:24px 1fr 34px;}
 .hed-cols{display:grid;grid-template-columns:22px 1fr 1fr 34px;gap:6px;font-size:10px;font-weight:800;letter-spacing:.12em;color:var(--faint);text-align:center;margin-bottom:4px;}
 .hed-btns{display:flex;gap:10px;}
 .hed-btns button{flex:1;padding:12px;border-radius:11px;font-size:15px;font-weight:750;cursor:pointer;font-family:inherit;}
@@ -1291,7 +1293,7 @@ const DISPLAY_NAME     = "Stock";
 const ATHLETE_KEY      = "Stock";       // backend identity (Stock himself)
 const DAD_NAME         = DISPLAY_NAME;  // legacy alias, display only
 /* ========================================================================== */
-const APP_VERSION = "2026.09.30d";
+const APP_VERSION = "2026.09.30f";
 /* Owner profile — unset. Never populate this in a public repo with real
    personal details; it ships in the page source. */
 const PROFILE = null;
@@ -1432,7 +1434,10 @@ function toast(msg){
    Kept out of volume, records, PRs and progress charts. Add names here to extend
    (cold plunge / sauna can join later with no muscle credit). ---- */
 const TIMED_RE=/\b(run|runs|running|jog|jogging|sprint|sprints|treadmill|ruck|rucking)\b/i;
-function isTimedName(name){ return TIMED_RE.test(name||""); }
+const SAUNA_RE=/\bsauna\b/i;   // recovery: minutes only, no muscle credit, not a training day
+function isSaunaName(name){ return SAUNA_RE.test(name||""); }
+function isRunName(name){ return TIMED_RE.test(name||""); }
+function isTimedName(name){ return isRunName(name) || isSaunaName(name); }
 function fmtMin(m){ m=num(m); return (Math.round(m*10)/10)+" min"; }
 function fmtMi(d){ return (Math.round(num(d)*100)/100)+" mi"; }
 /* minutes per mile; 0 when distance or time is missing */
@@ -1547,7 +1552,7 @@ function renderToday(){
     nameI.oninput=growName;
     nameI.onchange=()=>{ ex.name=nameI.value.trim()||"Exercise"; saveDraft(); renderToday(); };
     requestAnimationFrame(growName);
-    const timed=isTimedName(ex.name);
+    const timed=isTimedName(ex.name), sauna=isSaunaName(ex.name);
     const vol=document.createElement("div"); vol.className="ex-vol num";
     const evol=ex.sets.reduce((t,s)=>t+num(s.weight)*num(s.reps),0);
     vol.textContent = timed ? timedTotals(ex.sets) : (evol? fmtVol(evol)+" "+unit : "");
@@ -1589,9 +1594,11 @@ function renderToday(){
       }
     }
 
-    const grid=document.createElement("div"); grid.className="set-grid"+(timed?" timed":"");
+    const grid=document.createElement("div"); grid.className="set-grid"+(timed?" timed":"")+(sauna?" sauna":"");
     const hd=document.createElement("div"); hd.className="set-hd";
-    hd.innerHTML = timed
+    hd.innerHTML = sauna
+      ? "<span>#</span><span>Previous</span><span>Min</span><span>Done</span>"
+      : timed
       ? "<span>#</span><span>Previous</span><span>"+unit+"</span><span>Mi</span><span>Min</span><span>Done</span>"
       : "<span>Set</span><span>Previous</span><span>"+unit+"</span><span>Reps</span><span class='act-h'><i>Done</i><i>Rest</i></span>";
     grid.appendChild(hd);
@@ -1638,7 +1645,8 @@ function renderToday(){
       rb.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2.5h6"/><path d="M12 2.5v2"/><circle cx="12" cy="13" r="7.5"/><path d="M12 9.5V13l2.5 1.5"/></svg>';
       rb.onclick=()=>{ markStart(); startRest(); };
       const act=document.createElement("div"); act.className="set-act";
-      if(timed){ act.append(ck); row.append(idx,p,w,dI,r,act); }
+      if(sauna){ act.append(ck); row.append(idx,p,r,act); }
+      else if(timed){ act.append(ck); row.append(idx,p,w,dI,r,act); }
       else { act.append(ck,rb); row.append(idx,p,w,r,act); }
       grid.appendChild(row);
     });
@@ -1924,11 +1932,12 @@ function openWorkoutEditor(w, det){
       h.append(nm,rx); box.appendChild(h);
       const tm=isTimedName(x.name);
       const cols=document.createElement("div"); cols.className="hed-cols"+(tm?" t":"");
-      cols.innerHTML = tm ? '<span>#</span><span>'+(e.unit||unit).toUpperCase()+'</span><span>MI</span><span>MIN</span><span></span>'
+      const sa=isSaunaName(x.name); if(sa) cols.className="hed-cols s";
+      cols.innerHTML = sa ? '<span>#</span><span>MIN</span><span></span>' : tm ? '<span>#</span><span>'+(e.unit||unit).toUpperCase()+'</span><span>MI</span><span>MIN</span><span></span>'
                           : '<span>SET</span><span>'+(e.unit||unit).toUpperCase()+'</span><span>REPS</span><span></span>';
       box.appendChild(cols);
       x.sets.forEach((st,si)=>{
-        const r=document.createElement("div"); r.className="hed-set"+(tm?" t":"");
+        const r=document.createElement("div"); r.className="hed-set"+(isSaunaName(x.name)?" s":tm?" t":"");
         const i=document.createElement("div"); i.className="i"; i.textContent=si+1;
         const wI=document.createElement("input"); wI.type="text"; wI.inputMode="decimal"; wI.value=st.weight; wI.oninput=()=>{ st.weight=wI.value; };
         const rI=document.createElement("input"); rI.type="text";
@@ -1936,7 +1945,8 @@ function openWorkoutEditor(w, det){
         else { rI.inputMode="numeric"; rI.value=st.reps; rI.oninput=()=>{ st.reps=rI.value; }; }
         const xs=document.createElement("button"); xs.type="button"; xs.className="hed-x"; xs.textContent="−"; xs.setAttribute("aria-label","Remove set");
         xs.onclick=()=>{ x.sets.splice(si,1); drawEx(); };
-        if(tm){ const dI=document.createElement("input"); dI.type="text"; dI.inputMode="decimal"; dI.value=st.mi||""; dI.oninput=()=>{ st.mi=dI.value; }; r.append(i,wI,dI,rI,xs); }
+        if(isSaunaName(x.name)){ r.append(i,rI,xs); }
+        else if(tm){ const dI=document.createElement("input"); dI.type="text"; dI.inputMode="decimal"; dI.value=st.mi||""; dI.oninput=()=>{ st.mi=dI.value; }; r.append(i,wI,dI,rI,xs); }
         else r.append(i,wI,rI,xs);
         box.appendChild(r);
       });
@@ -2219,7 +2229,7 @@ function renderRecords(){
     });
   }));
   const keys=Object.keys(best).sort((a,b)=>best[b].e1-best[a].e1);
-  const runNames=[...new Set(loadWorkouts().flatMap(w=>w.exercises.filter(e=>isTimedName(e.name)).map(e=>e.name.trim())))];
+  const runNames=[...new Set(loadWorkouts().flatMap(w=>w.exercises.filter(e=>isRunName(e.name)).map(e=>e.name.trim())))];
   wrap.innerHTML=""; document.getElementById("recordsEmpty").style.display=(keys.length||runNames.length)?"none":"block";
   runNames.forEach(nm=>{
     const rr=runRecords(nm); if(!rr.pace && !rr.dist && !rr.weight) return;
@@ -3082,8 +3092,8 @@ function workoutDaySet(ws){
   const m = {};
   ws.forEach(w => {
     if(!w.date) return;
-    const sets = (w.exercises||[]).reduce((n,e)=>n+((e.sets||[]).length),0);
-    m[w.date] = Math.max(m[w.date]||0, sets);
+    const sets = (w.exercises||[]).reduce((n,e)=>n+(isSaunaName(e.name)?0:(e.sets||[]).length),0);   // sauna is recovery, not a training day
+    if(sets) m[w.date] = Math.max(m[w.date]||0, sets);
   });
   return m;
 }
@@ -3304,8 +3314,10 @@ const EX_RULES = [
   // Specific variants first; the general pattern for each family comes after.
   [/tibialis/i,                                                 [], []],   // front of shin: no region on the map
   [TIMED_RE,                                                    [], ["quads","hamstrings","glutes","calves"]],   // runs: half a set per round
-  [/dip bar|tricep dip/i,                                       ["triceps"], ["chest","front_delts"]],
-  [/tricep|skull ?crusher|push[- ]?down|tate press|french press/i,   ["triceps"], []],
+  [/dip bar|tricep dip|bench dip/i,                                       ["triceps"], ["chest","front_delts"]],
+  [/tricep|skull ?crusher|push[- ]?down|tate press|french press/i, ["triceps"], []],
+  [/jm press/i,                                                 ["triceps"], ["chest","front_delts"]],
+  [/(diamond|close[- ]?grip) push[- ]?up/i,                     ["triceps"], ["chest","front_delts"]],
   [/(db|dumbbell)\s+kickback/i,                                 ["triceps"], []],
   [/close-?grip bench/i,                                        ["triceps"], ["chest","front_delts"]],
   [/chest dip|weighted .*dip|\bdips?\b/i,                       ["chest"], ["triceps","front_delts"]],
@@ -3315,7 +3327,7 @@ const EX_RULES = [
   // Hannah's "Bicep Cable Pull": a neutral-grip overhead cable pull (per Stock),
   // lats and biceps together. Must beat the general bicep rule.
   [/bicep cable pull/i,                                         ["upper_back","biceps"], ["forearms","rear_delts"]],
-  [/reverse[- ]?(grip )?curl|pronated curl/i,                   ["forearms"], ["biceps"]],
+  [/reverse\b.*\bcurl|pronated curl/i,                          ["forearms"], ["biceps"]],
   [/zottman|hammer curl|pinwheel/i,                             ["biceps","forearms"], []],
   [/bicep|curl|spider|bayesian|concentration/i,                 ["biceps"], ["forearms"]],
   [/calf|soleus/i,                                              ["calves"], []],
@@ -3353,7 +3365,9 @@ const EX_RULES = [
   [/z-?press/i,                                                 ["front_delts"], ["side_delts","triceps","traps","abs"]],
   [/overhead press|\bohp\b|shoulder press|military/i,           ["front_delts"], ["side_delts","triceps","traps"]],
   [/incline.*(60|steep)/i,                                      ["chest","front_delts"], ["triceps"]],
-  [/bench|chest|fly|flye|crossover|guillotine|press/i,          ["chest"], ["front_delts","triceps"]],
+  [/\bfly\b|flye|crossover/i,                                  ["chest"], ["front_delts"]],   // flies barely use triceps
+  [/push[- ]?up/i,                                              ["chest"], ["triceps","front_delts"]],
+  [/bench|chest|guillotine|press/i,                            ["chest"], ["front_delts","triceps"]],
   [/plank|crunch|sit-?up|ab wheel|leg raise|russian twist|oblique|woodchop/i, ["abs"], ["obliques"]],
   [/wrist|farmer/i,                                             ["forearms"], []],
 ];
@@ -3398,13 +3412,14 @@ function statsBetween(ws, fromISO, toISO){
   MUSCLE_ORDER.forEach(g=>out.group[g]=0);
   ws.forEach(w=>{
     if(!w.date || w.date<fromISO || w.date>toISO) return;
+    if(!(w.exercises||[]).some(e=>!isSaunaName(e.name))) return;   // sauna-only day is not a workout
     out.workouts++;
     const dur=num(w.durationSec);
     if(dur>=MIN_TRACKED_SEC){ out.seconds+=dur; out.timed++; }
     (w.exercises||[]).forEach(e=>{
       const t=targetsFor(e.name);
       const n=(e.sets||[]).length;
-      (e.sets||[]).forEach(st=>{ out.sets++; out.volume+=num(st.weight)*num(st.reps); });
+      if(!isSaunaName(e.name)) (e.sets||[]).forEach(st=>{ out.sets++; out.volume+=num(st.weight)*num(st.reps); });
       if(!t || !n) return;
       t.primary.forEach(m=>{ if(m in out.muscle) out.muscle[m]+=n; });
       t.secondary.forEach(m=>{ if(m in out.muscle) out.muscle[m]+=n*0.5; });
