@@ -1291,7 +1291,7 @@ const DISPLAY_NAME     = "Stock";
 const ATHLETE_KEY      = "Stock";       // backend identity (Stock himself)
 const DAD_NAME         = DISPLAY_NAME;  // legacy alias, display only
 /* ========================================================================== */
-const APP_VERSION = "2026.09.30c";
+const APP_VERSION = "2026.09.30d";
 /* Owner profile — unset. Never populate this in a public repo with real
    personal details; it ships in the page source. */
 const PROFILE = null;
@@ -3305,7 +3305,7 @@ const EX_RULES = [
   [/tibialis/i,                                                 [], []],   // front of shin: no region on the map
   [TIMED_RE,                                                    [], ["quads","hamstrings","glutes","calves"]],   // runs: half a set per round
   [/dip bar|tricep dip/i,                                       ["triceps"], ["chest","front_delts"]],
-  [/tricep|skull ?crusher|pushdown|tate press|french press/i,   ["triceps"], []],
+  [/tricep|skull ?crusher|push[- ]?down|tate press|french press/i,   ["triceps"], []],
   [/(db|dumbbell)\s+kickback/i,                                 ["triceps"], []],
   [/close-?grip bench/i,                                        ["triceps"], ["chest","front_delts"]],
   [/chest dip|weighted .*dip|\bdips?\b/i,                       ["chest"], ["triceps","front_delts"]],
@@ -3347,7 +3347,7 @@ const EX_RULES = [
   [/pullover/i,                                                 ["upper_back"], ["chest","triceps"]],
   [/straight-?arm/i,                                            ["upper_back"], ["triceps","rear_delts"]],
   [/^(?!.*(incline|chest-supported)).*(barbell row|pendlay)/i,  ["upper_back"], ["traps","rear_delts","biceps","lower_back"]],
-  [/row|pulldown|pull-?up|chin-?up/i,                           ["upper_back"], ["biceps","rear_delts","forearms"]],
+  [/row|pull[- ]?down|pull[- ]?up|chin[- ]?up/i,                           ["upper_back"], ["biceps","rear_delts","forearms"]],
   [/lateral raise|side raise|lat raise/i,                       ["side_delts"], ["traps"]],
   [/arnold/i,                                                   ["front_delts","side_delts"], ["rear_delts","triceps","traps"]],
   [/z-?press/i,                                                 ["front_delts"], ["side_delts","triceps","traps","abs"]],
