@@ -199,7 +199,8 @@ input,textarea{font-family:inherit;}
 .set-grid.timed .set-act{justify-content:center;}
 .cell.cell-time{font-size:15px;letter-spacing:-.01em;}
 .set-grid.timed.sauna .set-hd,.set-grid.timed.sauna .set-row{grid-template-columns:22px minmax(0,1fr) 72px 44px;}
-@media (max-width:360px){.set-grid.timed:not(.sauna) .set-hd,.set-grid.timed:not(.sauna) .set-row{grid-template-columns:18px minmax(0,1fr) 44px 42px 44px 40px;gap:4px;}}
+.set-grid.timed.plunge .set-hd,.set-grid.timed.plunge .set-row{grid-template-columns:22px minmax(0,1fr) 64px 54px 44px;}
+@media (max-width:360px){.set-grid.timed:not(.sauna):not(.plunge) .set-hd,.set-grid.timed:not(.sauna):not(.plunge) .set-row{grid-template-columns:18px minmax(0,1fr) 44px 42px 44px 40px;gap:4px;}}
 .set-hd span{font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);text-align:center;}
 .set-hd span:nth-child(1){text-align:center;}
 .set-hd span:nth-child(2){text-align:left;padding-left:4px;}
@@ -1297,7 +1298,7 @@ const DISPLAY_NAME     = "Stock";
 const ATHLETE_KEY      = "Stock";       // backend identity (Stock himself)
 const DAD_NAME         = DISPLAY_NAME;  // legacy alias, display only
 /* ========================================================================== */
-const APP_VERSION = "2026.10.04a";
+const APP_VERSION = "2026.10.04b";
 /* Owner profile — unset. Never populate this in a public repo with real
    personal details; it ships in the page source. */
 const PROFILE = null;
@@ -1444,7 +1445,11 @@ const TIMED_RE=/\b(run|runs|running|jog|jogging|sprint|sprints|treadmill|ruck|ru
 const SAUNA_RE=/\bsauna\b/i;   // recovery: minutes only, no muscle credit, not a training day
 function isSaunaName(name){ return SAUNA_RE.test(name||""); }
 function isRunName(name){ return TIMED_RE.test(name||""); }
-function isTimedName(name){ return isRunName(name) || isSaunaName(name); }
+const PLUNGE_RE=/\bcold\s*plunge\b|\bice\s*bath\b|\bplunge\b/i;   // recovery: time (mm.ss) + water temp in F
+function isPlungeName(name){ return PLUNGE_RE.test(name||""); }
+function isRecoveryName(name){ return isSaunaName(name) || isPlungeName(name); }   // no muscle credit, never a training day
+function plungeText(s){ return [num(s.min)?fmtTime(s.min):"", num(s.temp)?num(s.temp)+"°F":""].filter(Boolean).join(" · "); }
+function isTimedName(name){ return isRunName(name) || isRecoveryName(name); }
 function fmtMin(m){ m=num(m); return (Math.round(m*10)/10)+" min"; }
 /* Run times. The iPhone number pad has "." but no ":", so "10.30" means 10:30,
    "1030" means 10:30 and "10" means 10 minutes. One digit after the dot is
@@ -1477,8 +1482,8 @@ function timedTotals(sets){ const mi=sets.reduce((t,s)=>t+num(s.mi),0), mn=sets.
   return [mi?fmtMi(mi):"", mn?(mi?fmtTime(mn):fmtMin(mn)):""].filter(Boolean).join(" · "); }
 /* run records per name: best mile pace (time / distance), longest distance, heaviest weight */
 function runRecords(name){
-  const key=(name||"").trim().toLowerCase(); const r={pace:null,dist:null,weight:null};
-  loadWorkouts().forEach(w=>(w.exercises||[]).forEach(e=>{ if((e.name||"").trim().toLowerCase()!==key) return;
+  const key=liftKey(name); const r={pace:null,dist:null,weight:null};
+  loadWorkouts().forEach(w=>(w.exercises||[]).forEach(e=>{ if(liftKey(e.name)!==key) return;
     e.sets.forEach(s=>{ const p=paceOf(s);
       if(p && (!r.pace || p<r.pace.v)) r.pace={v:p,set:s,date:w.date};
       if(num(s.mi) && (!r.dist || num(s.mi)>r.dist.v)) r.dist={v:num(s.mi),set:s,date:w.date};
@@ -1489,7 +1494,7 @@ function runRecords(name){
 function checkRunPR(name,set){
   const p=paceOf(set); if(!p) return;
   const hist=runRecords(name).pace; if(!hist) return;          // first ever run: nothing to beat yet
-  const k="run:"+name.toLowerCase(), bar=Math.min(hist.v, sessionPRs[k]||Infinity);
+  const k="run:"+liftKey(name), bar=Math.min(hist.v, sessionPRs[k]||Infinity);
   if(p<bar){ sessionPRs[k]=p;
     const b=document.getElementById("prbanner");
     document.getElementById("prbannerText").textContent=name+" · "+fmtPace(p)+" ("+timedSetText(set).replace(/ \(.*\)$/,"")+")";
@@ -1497,18 +1502,36 @@ function checkRunPR(name,set){
     clearTimeout(b._t); b._t=setTimeout(()=>b.classList.remove("show"),4200); }
 }
 function prevFor(name){
-  const key=name.trim().toLowerCase();
+  const key=liftKey(name);
   const all=loadWorkouts().slice().sort((a,b)=> b.date.localeCompare(a.date) || b.id.localeCompare(a.id));
   for(const w of all){
-    const ex=w.exercises.find(e=>e.name.trim().toLowerCase()===key && e.sets.length);
+    const ex=w.exercises.find(e=>liftKey(e.name)===key && e.sets.length);
     if(ex) return ex.sets;
   }
   return null;
 }
+/* "Same lift?" key: ignores case, spaces, hyphens, punctuation and plurals, and
+   folds the misspellings / short forms Stock actually types. "Dumbell Curl",
+   "dumbbell curls" and "DB Curl" all become one lift. Deliberately NOT fuzzy
+   beyond this: Hip Abduction vs Hip Adduction are one letter apart. */
+function liftKey(name){
+  let t=String(name||"").toLowerCase();
+  t=t.replace(/\bdumb+e?l+s?\b|\bdbs?\b/g,"dumbbell").replace(/\bkettle\s*bells?\b|\bkbs?\b/g,"kettlebell")
+     .replace(/\bbarbel\b|\bbbs?\b/g,"barbell").replace(/\blat raise/g,"lateral raise");
+  return t.split(/[^a-z0-9]+/).filter(Boolean).map(w=>w.length>3 && w.endsWith("s") && !w.endsWith("ss") ? w.slice(0,-1) : w).join("");
+}
+/* most-used spelling for each lift, so lists show one name per lift */
+function liftDisplayNames(){
+  const c=new Map();
+  loadWorkouts().forEach(w=>w.exercises.forEach(e=>{ const k=liftKey(e.name), nm=e.name.trim(); if(!k) return;
+    const m=c.get(k)||new Map(); m.set(nm,(m.get(nm)||0)+1); c.set(k,m); }));
+  const out=new Map(); c.forEach((m,k)=>{ out.set(k,[...m.entries()].sort((a,b)=>b[1]-a[1])[0][0]); }); return out;
+}
 function allNames(){
   const m=new Map();
-  loadWorkouts().forEach(w=>w.exercises.forEach(e=>{ const k=e.name.trim(); m.set(k,(m.get(k)||0)+1); }));
-  draft.exercises.forEach(e=>{ if(e.name) m.set(e.name.trim(),(m.get(e.name.trim())||0)+0); });
+  const disp=liftDisplayNames();
+  loadWorkouts().forEach(w=>w.exercises.forEach(e=>{ const k=disp.get(liftKey(e.name))||e.name.trim(); m.set(k,(m.get(k)||0)+1); }));
+  draft.exercises.forEach(e=>{ if(e.name){ const k=disp.get(liftKey(e.name))||e.name.trim(); m.set(k,(m.get(k)||0)+0); } });
   return m;
 }
 
@@ -1579,10 +1602,11 @@ function renderToday(){
     nameI.oninput=growName;
     nameI.onchange=()=>{ ex.name=nameI.value.trim()||"Exercise"; saveDraft(); renderToday(); };
     requestAnimationFrame(growName);
-    const timed=isTimedName(ex.name), sauna=isSaunaName(ex.name);
+    const timed=isTimedName(ex.name), sauna=isSaunaName(ex.name), plunge=isPlungeName(ex.name);
     const vol=document.createElement("div"); vol.className="ex-vol num";
     const evol=ex.sets.reduce((t,s)=>t+num(s.weight)*num(s.reps),0);
-    vol.textContent = timed ? timedTotals(ex.sets) : (evol? fmtVol(evol)+" "+unit : "");
+    const plTot=()=>{ const m=ex.sets.reduce((t,x)=>t+num(x.min),0); return m?fmtTime(m):""; };
+    vol.textContent = plunge ? plTot() : timed ? timedTotals(ex.sets) : (evol? fmtVol(evol)+" "+unit : "");
     const menu=document.createElement("button"); menu.className="ex-menu"; menu.setAttribute("aria-label","Remove exercise");
     menu.innerHTML='<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 7h14M10 11v5M14 11v5M6 7l1 12a1 1 0 001 1h8a1 1 0 001-1l1-12M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>';
     menu.onclick=()=>{ if(confirm("Remove "+ex.name+"?")){ draft.exercises.splice(ei,1);
@@ -1621,9 +1645,11 @@ function renderToday(){
       }
     }
 
-    const grid=document.createElement("div"); grid.className="set-grid"+(timed?" timed":"")+(sauna?" sauna":"");
+    const grid=document.createElement("div"); grid.className="set-grid"+(timed?" timed":"")+(sauna?" sauna":"")+(plunge?" plunge":"");
     const hd=document.createElement("div"); hd.className="set-hd";
-    hd.innerHTML = sauna
+    hd.innerHTML = plunge
+      ? "<span>#</span><span>Previous</span><span>Time</span><span>°F</span><span>Done</span>"
+      : sauna
       ? "<span>#</span><span>Previous</span><span>Min</span><span>Done</span>"
       : timed
       ? "<span>#</span><span>Previous</span><span>"+unit+"</span><span>Mi</span><span>Time</span><span>Done</span>"
@@ -1635,15 +1661,23 @@ function renderToday(){
       const idx=document.createElement("div"); idx.className="set-idx num"; idx.textContent=si+1;
       const p=document.createElement("div"); p.className="set-prev num";
       const pv=prev&&prev[si];
-      if(pv && timed){ p.innerHTML=(num(pv.mi)?"<b>"+num(pv.mi)+"</b>mi ":"")+(num(pv.min)?(sauna?num(pv.min)+"m":fmtTime(pv.min)):""); p.title="Tap to copy last time"; }
+      if(pv && plunge){ p.innerHTML=(num(pv.min)?"<b>"+fmtTime(pv.min)+"</b>":"")+(num(pv.temp)?" "+num(pv.temp)+"°":""); p.title="Tap to copy last time"; }
+      else if(pv && timed){ p.innerHTML=(num(pv.mi)?"<b>"+num(pv.mi)+"</b>mi ":"")+(num(pv.min)?(sauna?num(pv.min)+"m":fmtTime(pv.min)):""); p.title="Tap to copy last time"; }
       else if(pv){ p.innerHTML="<b>"+pv.weight+"</b> × "+pv.reps; p.title="Tap to copy last time"; }
       else p.textContent="—";
       const w=document.createElement("input"); w.className="cell num"; w.type="number"; w.inputMode="decimal"; w.min="0";
       w.value=s.weight; w.placeholder=pv?pv.weight:"0";
       w.oninput=()=>{ s.weight=w.value; markStart(); liveSummary(); vol.textContent=recalcVol(ex); };
       const r=document.createElement("input"); r.className="cell num"; r.type="number"; r.inputMode="numeric"; r.min="0";
-      let dI=null;
-      if(timed){
+      let dI=null, tI=null;
+      if(plunge){
+        wireTimeInput(r, ()=>s.min, v=>{ s.min=v; }, ()=>{ markStart(); liveSummary(); vol.textContent=plTot(); });
+        r.placeholder=pv&&num(pv.min)?fmtTime(pv.min):"mm.ss"; r.setAttribute("aria-label","Time, minutes.seconds"); r.classList.add("cell-time");
+        tI=document.createElement("input"); tI.className="cell num"; tI.type="number"; tI.inputMode="decimal"; tI.min="0";
+        tI.value=s.temp||""; tI.placeholder=pv&&num(pv.temp)?String(num(pv.temp)):"°F"; tI.setAttribute("aria-label","Water temperature, F");
+        tI.oninput=()=>{ s.temp=tI.value; markStart(); };
+        if(pv) p.onclick=()=>{ s.min=pv.min; s.temp=pv.temp; saveDraft(); renderToday(); };
+      } else if(timed){
         dI=document.createElement("input"); dI.className="cell num"; dI.type="number"; dI.inputMode="decimal"; dI.min="0"; dI.step="0.1";
         dI.value=s.mi||""; dI.placeholder=pv&&num(pv.mi)?String(num(pv.mi)):"0"; dI.setAttribute("aria-label","Miles");
         dI.oninput=()=>{ s.mi=dI.value; markStart(); vol.textContent=timedTotals(ex.sets); };
@@ -1667,7 +1701,8 @@ function renderToday(){
       ck.onclick=()=>{
         if(!s.done){
           if(!num(s.weight) && w.placeholder) s.weight=w.placeholder;
-          if(timed){ if(!num(s.min) && pv && num(pv.min)) s.min=pv.min; if(!num(s.mi) && dI && num(dI.placeholder)) s.mi=dI.placeholder; }
+          if(plunge){ if(!num(s.min) && pv && num(pv.min)) s.min=pv.min; if(!num(s.temp) && pv && num(pv.temp)) s.temp=pv.temp; }
+          else if(timed){ if(!num(s.min) && pv && num(pv.min)) s.min=pv.min; if(!num(s.mi) && dI && num(dI.placeholder)) s.mi=dI.placeholder; }
           else if(!num(s.reps) && r.placeholder) s.reps=r.placeholder;
           s.done=true; if(navigator.vibrate){ try{navigator.vibrate(18);}catch(e){} } markStart(); if(timed) checkRunPR(ex.name, s); else checkPR(ex.name, s);
         } else s.done=false;
@@ -1678,7 +1713,8 @@ function renderToday(){
       rb.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2.5h6"/><path d="M12 2.5v2"/><circle cx="12" cy="13" r="7.5"/><path d="M12 9.5V13l2.5 1.5"/></svg>';
       rb.onclick=()=>{ markStart(); startRest(); };
       const act=document.createElement("div"); act.className="set-act";
-      if(sauna){ act.append(ck); row.append(idx,p,r,act); }
+      if(plunge){ act.append(ck); row.append(idx,p,r,tI,act); }
+      else if(sauna){ act.append(ck); row.append(idx,p,r,act); }
       else if(timed){ act.append(ck); row.append(idx,p,w,dI,r,act); }
       else { act.append(ck,rb); row.append(idx,p,w,r,act); }
       grid.appendChild(row);
@@ -1690,7 +1726,8 @@ function renderToday(){
     add.onclick=()=>{
       const last=ex.sets[ex.sets.length-1];
       const pv2=prev&&prev[ex.sets.length];
-      if(timed) ex.sets.push({ weight: last?last.weight:(pv2?pv2.weight:""), mi: last?last.mi:(pv2?pv2.mi:""), min: last?last.min:(pv2?pv2.min:""), done:false });
+      if(plunge) ex.sets.push({ min: last?last.min:(pv2?pv2.min:""), temp: last?last.temp:(pv2?pv2.temp:""), done:false });
+      else if(timed) ex.sets.push({ weight: last?last.weight:(pv2?pv2.weight:""), mi: last?last.mi:(pv2?pv2.mi:""), min: last?last.min:(pv2?pv2.min:""), done:false });
       else ex.sets.push({ weight: last?last.weight:(pv2?pv2.weight:""), reps: last?last.reps:(pv2?pv2.reps:""), done:false });
       markActivity(); saveDraft(); renderToday();
     };
@@ -1820,9 +1857,9 @@ function closeRest(){ const el=document.getElementById("rest"); el.classList.rem
 
 /* ---------- PR celebration ---------- */
 function historyBestE1(name){
-  const key=name.trim().toLowerCase(); let best=0;
+  const key=liftKey(name); let best=0;
   loadWorkouts().forEach(w=>w.exercises.forEach(e=>{
-    if(e.name.trim().toLowerCase()===key) e.sets.forEach(s=>{ const v=epley(s.weight,s.reps); if(v>best)best=v; });
+    if(liftKey(e.name)===key) e.sets.forEach(s=>{ const v=epley(s.weight,s.reps); if(v>best)best=v; });
   }));
   return best;
 }
@@ -1831,8 +1868,8 @@ function checkPR(name,set){
   if(!e1) return;
   const hist=historyBestE1(name);
   if(hist<=0) return;                       // no prior history -> not a "beat it" moment yet
-  const bar=Math.max(hist, sessionPRs[name.toLowerCase()]||0);
-  if(e1>bar){ sessionPRs[name.toLowerCase()]=e1; celebratePR(name,set,e1); }
+  const bar=Math.max(hist, sessionPRs[liftKey(name)]||0);
+  if(e1>bar){ sessionPRs[liftKey(name)]=e1; celebratePR(name,set,e1); }
 }
 function celebratePR(name,set,e1){
   const b=document.getElementById("prbanner");
@@ -1863,7 +1900,9 @@ function confetti(){
 function finishWorkout(){
   const exercises=draft.exercises
     .map(e=>isTimedName(e.name)
-      ? ({ name:e.name, sets:e.sets.filter(s=>num(s.min)>0||num(s.mi)>0).map(s=>({weight:String(num(s.weight)),mi:String(num(s.mi)),min:String(num(s.min))})) })
+      ? (isPlungeName(e.name)
+          ? { name:e.name, sets:e.sets.filter(s=>num(s.min)>0).map(s=>Object.assign({min:String(num(s.min))}, num(s.temp)?{temp:String(num(s.temp))}:{})) }
+          : { name:e.name, sets:e.sets.filter(s=>num(s.min)>0||num(s.mi)>0).map(s=>({weight:String(num(s.weight)),mi:String(num(s.mi)),min:String(num(s.min))})) })
       : ({ name:e.name, sets:e.sets.filter(s=>num(s.reps)>0).map(s=>({weight:String(num(s.weight)),reps:String(num(s.reps))})) }))
     .filter(e=>e.sets.length>0);
   if(!exercises.length){ toast("Log at least one set first"); return; }
@@ -1914,7 +1953,7 @@ function renderHistory(){
     const det=document.createElement("div"); det.className="h-detail";
     w.exercises.forEach(e=>{
       const he=document.createElement("div"); he.className="h-ex";
-      const sets=isTimedName(e.name) ? e.sets.map(s=>'<span>'+timedSetText(s,u)+'</span>').join("") : e.sets.map(s=>'<span>'+num(s.weight)+'×'+num(s.reps)+'</span>').join("");
+      const sets=isPlungeName(e.name) ? e.sets.map(s=>'<span>'+plungeText(s)+'</span>').join("") : isTimedName(e.name) ? e.sets.map(s=>'<span>'+timedSetText(s,u)+'</span>').join("") : e.sets.map(s=>'<span>'+num(s.weight)+'×'+num(s.reps)+'</span>').join("");
       he.innerHTML='<div class="nm">'+escapeHtml(e.name)+'</div><div class="st num">'+sets+'</div>';
       det.appendChild(he);
     });
@@ -1968,12 +2007,12 @@ function openWorkoutEditor(w, det){
       h.append(nm,rx); box.appendChild(h);
       const tm=isTimedName(x.name);
       const cols=document.createElement("div"); cols.className="hed-cols"+(tm?" t":"");
-      const sa=isSaunaName(x.name); if(sa) cols.className="hed-cols s";
-      cols.innerHTML = sa ? '<span>#</span><span>MIN</span><span></span>' : tm ? '<span>#</span><span>'+(e.unit||unit).toUpperCase()+'</span><span>MI</span><span>TIME</span><span></span>'
+      const sa=isSaunaName(x.name), pl=isPlungeName(x.name); if(sa) cols.className="hed-cols s"; if(pl) cols.className="hed-cols";
+      cols.innerHTML = pl ? '<span>#</span><span>TIME</span><span>°F</span><span></span>' : sa ? '<span>#</span><span>MIN</span><span></span>' : tm ? '<span>#</span><span>'+(e.unit||unit).toUpperCase()+'</span><span>MI</span><span>TIME</span><span></span>'
                           : '<span>SET</span><span>'+(e.unit||unit).toUpperCase()+'</span><span>REPS</span><span></span>';
       box.appendChild(cols);
       x.sets.forEach((st,si)=>{
-        const r=document.createElement("div"); r.className="hed-set"+(isSaunaName(x.name)?" s":tm?" t":"");
+        const r=document.createElement("div"); r.className="hed-set"+(isSaunaName(x.name)?" s":isPlungeName(x.name)?"":tm?" t":"");
         const i=document.createElement("div"); i.className="i"; i.textContent=si+1;
         const wI=document.createElement("input"); wI.type="text"; wI.inputMode="decimal"; wI.value=st.weight; wI.oninput=()=>{ st.weight=wI.value; };
         const rI=document.createElement("input"); rI.type="text";
@@ -1982,14 +2021,15 @@ function openWorkoutEditor(w, det){
         else { rI.inputMode="numeric"; rI.value=st.reps; rI.oninput=()=>{ st.reps=rI.value; }; }
         const xs=document.createElement("button"); xs.type="button"; xs.className="hed-x"; xs.textContent="−"; xs.setAttribute("aria-label","Remove set");
         xs.onclick=()=>{ x.sets.splice(si,1); drawEx(); };
-        if(isSaunaName(x.name)){ r.append(i,rI,xs); }
+        if(isPlungeName(x.name)){ const tI=document.createElement("input"); tI.type="text"; tI.inputMode="decimal"; tI.value=st.temp||""; tI.oninput=()=>{ st.temp=tI.value; }; r.append(i,rI,tI,xs); }
+        else if(isSaunaName(x.name)){ r.append(i,rI,xs); }
         else if(tm){ const dI=document.createElement("input"); dI.type="text"; dI.inputMode="decimal"; dI.value=st.mi||""; dI.oninput=()=>{ st.mi=dI.value; }; r.append(i,wI,dI,rI,xs); }
         else r.append(i,wI,rI,xs);
         box.appendChild(r);
       });
       const add=document.createElement("button"); add.type="button"; add.className="hed-add"; add.textContent="+ Add set";
       add.textContent=tm?"+ Add round":"+ Add set";
-      add.onclick=()=>{ const last=x.sets[x.sets.length-1]; x.sets.push(tm?{weight:last?last.weight:"",mi:last?last.mi:"",min:last?last.min:""}:{weight:last?last.weight:"",reps:last?last.reps:""}); drawEx(); };
+      add.onclick=()=>{ const last=x.sets[x.sets.length-1]; x.sets.push(isPlungeName(x.name)?{min:last?last.min:"",temp:last?last.temp:""}:tm?{weight:last?last.weight:"",mi:last?last.mi:"",min:last?last.min:""}:{weight:last?last.weight:"",reps:last?last.reps:""}); drawEx(); };
       box.appendChild(add); exWrap.appendChild(box);
     });
   };
@@ -1999,7 +2039,7 @@ function openWorkoutEditor(w, det){
   const newI=ed.querySelector(".hed-newlift");
   ed.querySelector(".hed-addbtn").onclick=()=>{
     const nm=(newI.value||"").trim(); if(!nm){ newI.focus(); return; }
-    e.exercises.push({ name:nm, sets:[ isSaunaName(nm) ? {min:""} : isTimedName(nm) ? {weight:"",mi:"",min:""} : {weight:"",reps:""} ] });
+    e.exercises.push({ name:nm, sets:[ isPlungeName(nm) ? {min:"",temp:""} : isSaunaName(nm) ? {min:""} : isTimedName(nm) ? {weight:"",mi:"",min:""} : {weight:"",reps:""} ] });
     newI.value=""; drawEx();
     const boxes=exWrap.querySelectorAll(".hed-ex"); const last=boxes[boxes.length-1]; if(last){ const f=last.querySelector(".hed-set input"); if(f) f.focus(); }
   };
@@ -2015,7 +2055,9 @@ function openWorkoutEditor(w, det){
     const exercises=e.exercises
       .map(x=>{ const nm=(x.name||"").trim()||"Exercise";
         return isTimedName(nm)
-          ? { name:nm, sets:x.sets.filter(st=>num(st.min)>0||num(st.mi)>0).map(st=>({weight:String(num(st.weight)),mi:String(num(st.mi)),min:String(num(st.min))})) }
+          ? (isPlungeName(nm)
+              ? { name:nm, sets:x.sets.filter(st=>num(st.min)>0).map(st=>Object.assign({min:String(num(st.min))}, num(st.temp)?{temp:String(num(st.temp))}:{})) }
+              : { name:nm, sets:x.sets.filter(st=>num(st.min)>0||num(st.mi)>0).map(st=>({weight:String(num(st.weight)),mi:String(num(st.mi)),min:String(num(st.min))})) })
           : { name:nm, sets:x.sets.filter(st=>num(st.reps)>0).map(st=>({weight:String(num(st.weight)),reps:String(num(st.reps))})) }; })
       .filter(x=>x.sets.length>0);
     if(!exercises.length){ toast("Keep at least one set, or delete the workout"); return; }
@@ -2114,13 +2156,13 @@ const CHART_METRICS = [
    setvol = biggest single set (weight x reps), reps = total reps that day. */
 function exerciseSeries(name, metric){
   metric = metric || "weight";
-  const key=name.trim().toLowerCase(); const out=[];
+  const key=liftKey(name); const out=[];
   loadWorkouts().slice()
     .sort((a,b)=>a.date.localeCompare(b.date)||String(a.id).localeCompare(String(b.id)))
     .forEach(w=>{
       let best=0, totalReps=0, seen=false;
       (w.exercises||[]).forEach(e=>{
-        if((e.name||"").trim().toLowerCase()!==key) return;
+        if(liftKey(e.name)!==key) return;
         (e.sets||[]).forEach(st=>{
           const wt=num(st.weight), rp=num(st.reps);
           if(!rp) return;
@@ -2180,7 +2222,8 @@ function renderMovers(){
   const ws=loadWorkouts();
   if(!ws.length){ card.innerHTML='<div class="mv-empty">Your progress shows up here as you train. Log a lift on two different days and watch it climb.</div>'; return; }
   const latestDate=ws.reduce((m,w)=> w.date>m?w.date:m, "");
-  const names=new Set(); ws.forEach(w=>w.exercises.forEach(e=>{ if(!isTimedName(e.name)) names.add(e.name.trim()); }));
+  const mvDisp=liftDisplayNames();
+  const names=new Set(); ws.forEach(w=>w.exercises.forEach(e=>{ if(!isTimedName(e.name)) names.add(mvDisp.get(liftKey(e.name))||e.name.trim()); }));
   const movers=[]; let prCount=0;
   names.forEach(nm=>{
     const s=exerciseSeries(nm);
@@ -2214,13 +2257,13 @@ function renderMovers(){
    heaviest weight, best e1RM, best single-set volume, best session volume,
    plus the heaviest weight achieved at each rep count. */
 function exerciseRecords(name){
-  const key=(name||"").trim().toLowerCase();
+  const key=liftKey(name);
   let heaviest=null,best1rm=null,bestSetVol=null,bestSessVol=null;
   const byReps={};
   loadWorkouts().forEach(w=>{
     let sessVol=0, found=false;
     (w.exercises||[]).forEach(e=>{
-      if((e.name||"").trim().toLowerCase()!==key) return;
+      if(liftKey(e.name)!==key) return;
       found=true;
       (e.sets||[]).forEach(st=>{
         const wt=num(st.weight), rp=num(st.reps);
@@ -2266,8 +2309,9 @@ function renderRecords(){
   renderMovers();
   const wrap=document.getElementById("recordsList");
   const best={};
+  const disp=liftDisplayNames();
   loadWorkouts().forEach(w=>w.exercises.forEach(e=>{
-    const k=e.name.trim(); if(isTimedName(k)) return;
+    const k=disp.get(liftKey(e.name))||e.name.trim(); if(isTimedName(k)) return;
     e.sets.forEach(s=>{
       const e1=epley(s.weight,s.reps), wt=num(s.weight);
       if(!best[k] || e1>best[k].e1 || (e1===best[k].e1 && wt>best[k].weight))
@@ -2275,7 +2319,7 @@ function renderRecords(){
     });
   }));
   const keys=Object.keys(best).sort((a,b)=>best[b].e1-best[a].e1);
-  const runNames=[...new Set(loadWorkouts().flatMap(w=>w.exercises.filter(e=>isRunName(e.name)).map(e=>e.name.trim())))];
+  const runNames=[...new Set(loadWorkouts().flatMap(w=>w.exercises.filter(e=>isRunName(e.name)).map(e=>disp.get(liftKey(e.name))||e.name.trim())))];
   wrap.innerHTML=""; document.getElementById("recordsEmpty").style.display=(keys.length||runNames.length)?"none":"block";
   runNames.forEach(nm=>{
     const rr=runRecords(nm); if(!rr.pace && !rr.dist && !rr.weight) return;
@@ -2548,8 +2592,9 @@ function rowEl(label,tag,create,value){
   d.onclick=()=>addExercise(value); return d;
 }
 function addExercise(name){
-  const clean=(name||"").trim(); if(!clean) return;
-  const ex={ name:clean, sets: isTimedName(clean) ? [{weight:"",mi:"",min:"",done:false}] : [
+  let clean=(name||"").trim(); if(!clean) return;
+  const known=liftDisplayNames().get(liftKey(clean)); if(known) clean=known;   // "dumbell curl" -> your "Dumbbell Curl"
+  const ex={ name:clean, sets: isPlungeName(clean) ? [{min:"",temp:"",done:false}] : isTimedName(clean) ? [{weight:"",mi:"",min:"",done:false}] : [
     {weight:"",reps:"",done:false},
     {weight:"",reps:"",done:false},
     {weight:"",reps:"",done:false}
@@ -3138,7 +3183,7 @@ function workoutDaySet(ws){
   const m = {};
   ws.forEach(w => {
     if(!w.date) return;
-    const sets = (w.exercises||[]).reduce((n,e)=>n+(isSaunaName(e.name)?0:(e.sets||[]).length),0);   // sauna is recovery, not a training day
+    const sets = (w.exercises||[]).reduce((n,e)=>n+(isRecoveryName(e.name)?0:(e.sets||[]).length),0);   // sauna / cold plunge = recovery, not a training day
     if(sets) m[w.date] = Math.max(m[w.date]||0, sets);
   });
   return m;
@@ -3235,9 +3280,10 @@ function renderPace(ws, dayMap){
 
 function renderPBs(ws){
   const list = document.getElementById("pbList"); if(!list) return;
+  const pbDisp = liftDisplayNames();
   const best = {};
   ws.forEach(w => (w.exercises||[]).forEach(e => {
-    const k = (e.name||"").trim(); if(!k || isTimedName(k)) return;
+    const k = pbDisp.get(liftKey(e.name)) || (e.name||"").trim(); if(!k || isTimedName(k)) return;
     (e.sets||[]).forEach(s => {
       const e1 = epley(s.weight, s.reps), wt = num(s.weight);
       if(!best[k] || e1 > best[k].e1 || (e1===best[k].e1 && wt > best[k].weight))
@@ -3458,14 +3504,14 @@ function statsBetween(ws, fromISO, toISO){
   MUSCLE_ORDER.forEach(g=>out.group[g]=0);
   ws.forEach(w=>{
     if(!w.date || w.date<fromISO || w.date>toISO) return;
-    if(!(w.exercises||[]).some(e=>!isSaunaName(e.name))) return;   // sauna-only day is not a workout
+    if(!(w.exercises||[]).some(e=>!isRecoveryName(e.name))) return;   // recovery-only day is not a workout
     out.workouts++;
     const dur=num(w.durationSec);
     if(dur>=MIN_TRACKED_SEC){ out.seconds+=dur; out.timed++; }
     (w.exercises||[]).forEach(e=>{
       const t=targetsFor(e.name);
       const n=(e.sets||[]).length;
-      if(!isSaunaName(e.name)) (e.sets||[]).forEach(st=>{ out.sets++; out.volume+=num(st.weight)*num(st.reps); });
+      if(!isRecoveryName(e.name)) (e.sets||[]).forEach(st=>{ out.sets++; out.volume+=num(st.weight)*num(st.reps); });
       if(!t || !n) return;
       t.primary.forEach(m=>{ if(m in out.muscle) out.muscle[m]+=n; });
       t.secondary.forEach(m=>{ if(m in out.muscle) out.muscle[m]+=n*0.5; });
