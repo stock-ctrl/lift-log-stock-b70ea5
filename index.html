@@ -1297,7 +1297,7 @@ const DISPLAY_NAME     = "Stock";
 const ATHLETE_KEY      = "Stock";       // backend identity (Stock himself)
 const DAD_NAME         = DISPLAY_NAME;  // legacy alias, display only
 /* ========================================================================== */
-const APP_VERSION = "2026.09.30g";
+const APP_VERSION = "2026.10.04a";
 /* Owner profile — unset. Never populate this in a public repo with real
    personal details; it ships in the page source. */
 const PROFILE = null;
@@ -1380,7 +1380,10 @@ if(DEMO){(function(){
 const loadWorkouts = () => { if(DEMO) return DEMO_WORKOUTS.slice(); try{ return JSON.parse(localStorage.getItem(LS_KEY))||[]; }catch(e){ return []; } };
 const saveWorkouts = w => { if(DEMO) return; localStorage.setItem(LS_KEY, JSON.stringify(w)); };
 const loadDraft = () => { if(DEMO) return blankDraft(); try{ return JSON.parse(localStorage.getItem(DRAFT_KEY))||blankDraft(); }catch(e){ return blankDraft(); } };
-const saveDraft = () => { if(DEMO) return; localStorage.setItem(DRAFT_KEY, JSON.stringify(draft)); };
+const saveDraft = () => {
+  // remember the day the workout was started, so one saved the next day still lands on the right date
+  if(draft && draft.exercises && draft.exercises.length && !draft.dayISO) draft.dayISO = draft.startedAt ? isoOf(new Date(draft.startedAt)) : todayISO();
+  if(DEMO) return; localStorage.setItem(DRAFT_KEY, JSON.stringify(draft)); };
 const loadBW = () => { if(DEMO) return DEMO_BW.slice(); try{ return JSON.parse(localStorage.getItem(BW_KEY))||[]; }catch(e){ return []; } };
 const saveBW = a => { if(DEMO) return; localStorage.setItem(BW_KEY, JSON.stringify(a)); };
 /* Demo mode writes to its OWN keys. The demo and the real app share an origin,
@@ -1524,7 +1527,8 @@ function renderToday(){
   const hasWork = draft.exercises.some(e=>e.sets.some(s=>s.done || num(s.weight) || num(s.reps) || num(s.min) || num(s.mi)));
   if(hasWork && !draft.startedAt){
     const banner=document.createElement("div"); banner.className="resume";
-    banner.innerHTML='<div class="resume-t">Unfinished workout</div>'+
+    const fromDay = draft.dayISO && draft.dayISO!==todayISO() ? " from "+shortDate(draft.dayISO) : "";
+    banner.innerHTML='<div class="resume-t">Unfinished workout'+fromDay+'</div>'+
       '<div class="resume-s">You logged sets but didn’t save yet. Finish to log it, or discard to clear.</div>'+
       '<div class="resume-btns"><button class="resume-save">Finish &amp; save</button><button class="resume-disc">Discard</button></div>';
     banner.querySelector(".resume-save").onclick=finishWorkout;
@@ -1866,13 +1870,14 @@ function finishWorkout(){
   let dur=null; if(draft.startedAt) dur=Math.min(5*3600,Math.max(60,Math.floor(workoutElapsedMs()/1000)));   // excludes paused time
   const dayName=(draft.name||"").trim();
   const ws=loadWorkouts();
-  ws.push({ id:uid(), date:todayISO(), name:dayName, feel:draft.feel||"", note:(draft.note||"").trim(),
+  const day = draft.dayISO || (draft.startedAt ? isoOf(new Date(draft.startedAt)) : todayISO());
+  ws.push({ id:uid(), date:day, name:dayName, feel:draft.feel||"", note:(draft.note||"").trim(),
             durationSec:dur, unit, exercises });
   saveWorkouts(ws);
   if(dayName){ const rts=loadRoutines(); rts[dayName.toLowerCase()]={name:dayName,exercises:exercises.map(e=>e.name)}; saveRoutines(rts); }
   draft=blankDraft(); saveDraft(); sessionPRs={}; stopWorkoutClock(); closeRest();
   renderToday(); renderHistory(); renderRecords(); updateStats(); renderHome(); renderStats(); renderPlan(); syncPush();
-  toast("Logged. Beat it next time."); switchTab("history"); setTimeout(showQuote, 2200);
+  toast(day===todayISO() ? "Logged. Beat it next time." : "Logged to "+shortDate(day)+", the day you started it."); switchTab("history"); setTimeout(showQuote, 2200);
 }
 
 /* ======================= HISTORY ======================= */
