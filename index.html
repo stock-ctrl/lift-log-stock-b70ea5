@@ -1298,7 +1298,7 @@ const DISPLAY_NAME     = "Stock";
 const ATHLETE_KEY      = "Stock";       // backend identity (Stock himself)
 const DAD_NAME         = DISPLAY_NAME;  // legacy alias, display only
 /* ========================================================================== */
-const APP_VERSION = "2026.10.04b";
+const APP_VERSION = "2026.10.05a";
 /* Owner profile — unset. Never populate this in a public repo with real
    personal details; it ships in the page source. */
 const PROFILE = null;
@@ -1308,6 +1308,7 @@ const DRAFT_KEY = "stock_draft_v2";
 const UNIT_KEY  = "stock_unit_v2";
 const BW_KEY    = "stock_bw_v2";
 const REST_KEY  = "stock_rest_v2";
+const RESTEND_KEY = "stock_restend_v2";   // running rest timer's end time, so it survives leaving the app
 const ROUTINES_KEY = "stock_routines_v2";
 const TOKEN_KEY    = "stock_synctoken_v2";
 const SYNCED_KEY   = "stock_syncedat_v2";
@@ -1813,14 +1814,17 @@ function stopWorkoutClock(){ if(clockInt){ clearInterval(clockInt); clockInt=nul
    No chime: web audio only plays while the app is in the foreground, so a sound
    promised a rest alert the app could not actually deliver once she locked the
    phone or switched apps. The countdown is honest about being a screen you look
-   at. navigator.vibrate is kept as a bonus - it is a no-op on iOS Safari. */
+   at. navigator.vibrate is kept as a bonus - it is a no-op on iOS Safari.
+   The end time is saved to localStorage, so leaving the app (or iOS reloading it
+   while it sat in the background) does not lose the countdown: coming back
+   picks it up where the clock says it should be. */
 let syncBlocked=false;   // server refused the push: this device is not her registered one
 let restInt=null, restEnd=0;
 function startRest(){
   const el=document.getElementById("rest");
   el.classList.remove("done","ring");
   document.getElementById("restLab").textContent="Rest";
-  restEnd=Date.now()+restTarget*1000;
+  restEnd=Date.now()+restTarget*1000; saveRestEnd();
   el.classList.add("show"); tickRest();
   if(restInt) clearInterval(restInt); restInt=setInterval(tickRest,250);
   if(Math.random()<0.5) showQuote();
@@ -1841,19 +1845,33 @@ function tickRest(){
   }
   document.getElementById("restTime").textContent=fmtClock(remain);
 }
+function saveRestEnd(){ if(DEMO) return; try{ if(restEnd) localStorage.setItem(RESTEND_KEY,String(restEnd)); else localStorage.removeItem(RESTEND_KEY); }catch(e){} }
+/* app reopened with a rest still running: put the countdown back up. If it ran
+   out while he was away, flash "Rest done" so he knows, unless that was long ago. */
+function resumeRest(){
+  if(DEMO) return;
+  let end=0; try{ end=parseInt(localStorage.getItem(RESTEND_KEY),10)||0; }catch(e){}
+  if(!end) return;
+  if(Date.now()-end>10*60*1000){ restEnd=0; saveRestEnd(); return; }
+  restEnd=end;
+  const el=document.getElementById("rest");
+  el.classList.remove("done","ring"); document.getElementById("restLab").textContent="Rest";
+  el.classList.add("show"); tickRest();
+  if(restEnd>Date.now() && !restInt) restInt=setInterval(tickRest,250);
+}
 function adjustRest(delta){
   const el=document.getElementById("rest");
   if(el.classList.contains("done")){
     if(delta<0) return;
-    restEnd=Date.now()+delta*1000; el.classList.remove("done","ring");
+    restEnd=Date.now()+delta*1000; saveRestEnd(); el.classList.remove("done","ring");
     document.getElementById("restLab").textContent="Rest";
     if(!restInt) restInt=setInterval(tickRest,250); tickRest(); return;
   }
   restEnd+=delta*1000;
   if(restEnd-Date.now()<5000) restEnd=Date.now()+5000;
-  tickRest();
+  saveRestEnd(); tickRest();
 }
-function closeRest(){ const el=document.getElementById("rest"); el.classList.remove("show","done","ring"); if(restInt){clearInterval(restInt);restInt=null;} }
+function closeRest(){ const el=document.getElementById("rest"); el.classList.remove("show","done","ring"); if(restInt){clearInterval(restInt);restInt=null;} restEnd=0; saveRestEnd(); }
 
 /* ---------- PR celebration ---------- */
 function historyBestE1(name){
@@ -3116,7 +3134,7 @@ document.addEventListener("visibilitychange",()=>{ if(!document.hidden){ checkFo
   // days, then push its stale copy over newer work done on her phone. The
   // in-progress draft is stored separately, so this cannot disturb a live set.
   if(syncOn) syncPull();
-  if(document.getElementById("rest").classList.contains("show")) tickRest(); tickClock(); } });
+  if(document.getElementById("rest").classList.contains("show")) tickRest(); else resumeRest(); tickClock(); } });
 
 /* keep the focused text field visible above the on-screen keyboard */
 function isField(el){ return el && (el.tagName==="INPUT"||el.tagName==="TEXTAREA"); }
@@ -3160,7 +3178,7 @@ document.getElementById("unitToggle").onclick=e=>{ e.preventDefault();
   document.getElementById("appVer").textContent=APP_VERSION;
   if(DEMO) document.getElementById("barSub").textContent="Sample data preview";
   try{ if(new URLSearchParams(location.search).has("v")){ setTimeout(showWhatsNew,600); history.replaceState(null,"",location.pathname+(DEMO?"?demo=1":"")); } }catch(e){}
-  renderRestSeg(); renderSync(); renderPlan();
+  renderRestSeg(); renderSync(); renderPlan(); resumeRest();
   if(PERSONAL_MESSAGE && PERSONAL_MESSAGE.trim()){
     document.getElementById("personalMsg").style.display="block";
     document.getElementById("personalMsgText").textContent=PERSONAL_MESSAGE;
